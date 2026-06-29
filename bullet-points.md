@@ -12,6 +12,8 @@ maybe useful maybe not, blogpost on making battleship
 https://medium.com/@nbazer00/how-i-built-battleship-from-scratch-in-javascript-3db9251fae72
 
 # assets
-Submarine by Poly by Google [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/8PgPdFGg3MO
-low poly battleship by angelo raffaele Catalano [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/cqV6mUkn7Ow)
-Container Ship by Alex Safayan [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/3AmDGcCu6Ll)
+- ship size 3: Submarine by Poly by Google [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/8PgPdFGg3MO
+- ship size 5: low poly battleship by angelo raffaele Catalano [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/cqV6mUkn7Ow)
+- ship size 4: Container Ship by Alex Safayan [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/3AmDGcCu6Ll)
+- ship size 2: Cruise Ship by Quaternius (https://poly.pizza/m/yq9EKmEmfC)
+- ship size 1: Boat by Poly by Google [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/84-DYhLzxNq)
