@@ -14,3 +14,4 @@ What are the things that are necessary to run an app like this at the most basic
 7. could also have some sort of rudimentary chat app so players can chat back and forth, in the meantime lets keep the scope creep going, and not forget our rainy-city.com lesson of the MVP https://www.lowimpactfruit.com/p/rainy-citycom-a-side-project-i-have
 8. at teh end of the devblog writing prior to delivery there should be an AI summary of the dev blog
 
+thoughts: given that the only way to connect is over the api that means we have to have some sort of encrypted blah blah to get players to pass API keys over the internet to the app, maybe its asking too much for a two day task.
