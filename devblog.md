@@ -15,3 +15,7 @@ What are the things that are necessary to run an app like this at the most basic
 8. at teh end of the devblog writing prior to delivery there should be an AI summary of the dev blog
 
 thoughts: given that the only way to connect is over the api that means we have to have some sort of encrypted blah blah to get players to pass API keys over the internet to the app, maybe its asking too much for a two day task.
+
+more thoughts from sentience: Anti-cheat: the key is never send ship positions to the opponent's client. Keep that server-side only, return only hit/miss results. For scaling, the grid is just coordinate lookups so it's O(1) per shot regardless of board size.
+
+more thoughts from me: i do think the spike is to have some sort of AI playing the game and maybe like taunting you through the chat? i dont know that seems expensive but maybe its worth it. i would like to do sentience integration since it would just be so much fun, lets see what claude comes up with in planning mode.
