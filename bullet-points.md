@@ -11,4 +11,7 @@ https://github.com/mnky9800n/rainy-city
 maybe useful maybe not, blogpost on making battleship
 https://medium.com/@nbazer00/how-i-built-battleship-from-scratch-in-javascript-3db9251fae72
 
-
+# assets
+Submarine by Poly by Google [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/8PgPdFGg3MO
+low poly battleship by angelo raffaele Catalano [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/cqV6mUkn7Ow)
+Container Ship by Alex Safayan [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/3AmDGcCu6Ll)
