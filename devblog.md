@@ -19,3 +19,5 @@ thoughts: given that the only way to connect is over the api that means we have 
 more thoughts from sentience: Anti-cheat: the key is never send ship positions to the opponent's client. Keep that server-side only, return only hit/miss results. For scaling, the grid is just coordinate lookups so it's O(1) per shot regardless of board size.
 
 more thoughts from me: i do think the spike is to have some sort of AI playing the game and maybe like taunting you through the chat? i dont know that seems expensive but maybe its worth it. i would like to do sentience integration since it would just be so much fun, lets see what claude comes up with in planning mode.
+
+notes: i have selected and added boat assets, these should look good on the map, assuming they are adequately sized next to the whales.
