@@ -1,0 +1,14 @@
+
+this is a document that has links for relevant repos to build things in
+
+# rainy-city.com for rendering and interaction
+i think it would be cool if we could take the rendering already built into rainy city and then use it to make the battle ship map, maybe instead of one map you see two, one that has a cloud of war, and your own map. and instead of having the land and ocean we just have ocean with a flat bottom, but we keep the whales, rainy-city.com also already has clickable events, and so all we really need is to reduce it to a 10x10 grid and have some kind of ability to scale it if we really want.
+
+link:
+https://github.com/mnky9800n/rainy-city
+
+# battleship
+maybe useful maybe not, blogpost on making battleship
+https://medium.com/@nbazer00/how-i-built-battleship-from-scratch-in-javascript-3db9251fae72
+
+
