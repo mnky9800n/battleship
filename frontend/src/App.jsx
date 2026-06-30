@@ -33,7 +33,6 @@ export default function App() {
     };
   }, [client, newGame]);
 
-  // Reset placement selection whenever a fresh game starts.
   const lastGame = useRef(null);
   useEffect(() => {
     if (snap && snap.gameId !== lastGame.current) {
@@ -54,7 +53,6 @@ export default function App() {
   const isPlaying = status === "playing";
   const over = status === "over";
 
-  // --- placement state derived from the snapshot ---
   const placedShips = snap?.own?.ships ?? [];
   const placed = new Set(placedShips.map((s) => s.kind));
   const remaining = FLEET.filter((k) => !placed.has(k));
@@ -69,7 +67,7 @@ export default function App() {
       if (!isSetup || !selectedKind) return;
       const cells = footprintCells(anchor, SHIP_KINDS[selectedKind].length, orientation);
       if (!placementValid(cells, occupiedExcept(selectedKind))) {
-        setFlash("can't place there");
+        setFlash("invalid position");
         return;
       }
       client.placeShip(selectedKind, cells);
@@ -103,17 +101,18 @@ export default function App() {
 
   const yourTurn = snap?.whoseTurn === "you";
   const won = over && snap?.winner === "you";
+  const statusColor = over ? (won ? T.green : T.red) : yourTurn ? T.green : T.amber;
 
   return (
-    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", animation: "flicker 6s infinite" }}>
       {/* Top bar */}
       <div style={barStyle}>
-        <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
-          <span style={{ fontSize: 20, letterSpacing: 3 }}>BATTLESHIP</span>
-          <span style={{ fontSize: 11, opacity: 0.55 }}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
+          <span style={titleStyle}>BATTLESHIP</span>
+          <span style={{ fontSize: 11, color: T.greenDim }}>
             {isSetup
-              ? "place your fleet · click to drop · right-click to rotate"
-              : "drag pan · wheel zoom · click enemy waters to fire"}
+              ? "// deploy fleet · click drop · right-click rotate"
+              : "// drag pan · wheel zoom · click enemy grid to fire"}
           </span>
         </div>
 
@@ -128,8 +127,8 @@ export default function App() {
                 onClick={() => setSelectedKind(k)}
               />
             ))}
-            <span style={{ fontSize: 11, opacity: 0.6, width: 64 }}>
-              {orientation === "h" ? "horizontal" : "vertical"}
+            <span style={{ fontSize: 11, color: T.greenDim, width: 58 }}>
+              [{orientation === "h" ? "HORIZ" : "VERT"}]
             </span>
             <button onClick={() => client.clearPlacement()} style={btnStyle}>✕ CLEAR</button>
             <button
@@ -137,23 +136,23 @@ export default function App() {
               disabled={!allPlaced}
               style={{ ...btnStyle, ...(allPlaced ? readyStyle : disabledStyle) }}
             >
-              ✓ READY
+              ▶ READY
             </button>
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <span style={{ fontSize: 13, color: over ? (won ? "#6effa0" : "#ff6e6e") : yourTurn ? "#9fe8ff" : "#ffb066" }}>
+            <span style={{ fontSize: 13, color: statusColor, textShadow: T.glow }}>
               {over
                 ? won
-                  ? "ENEMY FLEET DESTROYED — YOU WIN"
-                  : "YOUR FLEET LOST"
+                  ? "ENEMY FLEET DESTROYED // VICTORY"
+                  : "FLEET LOST // DEFEAT"
                 : yourTurn
-                ? "YOUR TURN — fire at will"
-                : "ENEMY TURN…"}
+                ? "YOUR TURN // FIRE AT WILL"
+                : "ENEMY TURN //"}
             </span>
-            <span style={{ fontSize: 12, opacity: 0.75 }}>
+            <span style={{ fontSize: 12, color: T.greenDim }}>
               last: {coord(snap?.lastShot)}
-              {snap?.lastShot?.result ? ` (${snap.lastShot.result}${snap.lastShot.sunkShip ? " · sank " + snap.lastShot.sunkShip : ""})` : ""}
+              {snap?.lastShot?.result ? ` [${snap.lastShot.result}${snap.lastShot.sunkShip ? " · SANK " + snap.lastShot.sunkShip.toUpperCase() : ""}]` : ""}
             </span>
             <button onClick={newGame} style={btnStyle}>↻ NEW GAME</button>
           </div>
@@ -162,7 +161,7 @@ export default function App() {
 
       {/* Boards */}
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        <Panel label="YOUR WATERS" sub={isSetup ? "place your fleet here" : "your fleet · incoming fire"} active={isSetup}>
+        <Panel label="YOUR WATERS" sub={isSetup ? "deploy fleet here" : "your fleet · incoming fire"} active={isSetup}>
           {snap && (
             <BoardRenderer
               view={snap.own}
@@ -174,7 +173,7 @@ export default function App() {
         </Panel>
         <Panel label="ENEMY WATERS" sub={isSetup ? "locked until ready" : "your shots · click to fire"} divider active={yourTurn && isPlaying}>
           {snap && <BoardRenderer view={snap.enemy} onTileClick={isPlaying ? handleFire : undefined} />}
-          {isSetup && <div style={lockStyle}>◵ awaiting deployment</div>}
+          {isSetup && <div style={lockStyle}>◵ AWAITING DEPLOYMENT</div>}
         </Panel>
       </div>
 
@@ -195,10 +194,11 @@ function ShipChip({ kind, placed, selected, onClick }) {
         fontSize: 11,
         letterSpacing: 0.5,
         padding: "5px 8px",
-        color: selected ? "#06121b" : placed ? "#6effa0" : "#9fe8ff",
-        background: selected ? "#9fe8ff" : "transparent",
-        border: `1px solid ${placed ? "rgba(110,255,160,0.6)" : "rgba(120,200,235,0.5)"}`,
-        opacity: placed && !selected ? 0.7 : 1,
+        color: selected ? T.bg : T.green,
+        background: selected ? T.green : "transparent",
+        border: `1px solid ${selected ? T.green : T.greenDim}`,
+        opacity: placed && !selected ? 0.55 : 1,
+        textShadow: selected ? "none" : T.glow,
       }}
     >
       {placed ? "✓ " : ""}
@@ -214,21 +214,43 @@ function Panel({ label, sub, divider, active, children }) {
         flex: 1,
         position: "relative",
         minWidth: 0,
-        borderLeft: divider ? "1px solid rgba(120,200,235,0.18)" : "none",
-        background: "radial-gradient(circle at 50% 40%, #0b2030 0%, #06121b 72%)",
-        boxShadow: active ? "inset 0 0 0 2px rgba(120,230,255,0.35)" : "none",
+        borderLeft: divider ? `1px solid ${T.greenFaint}` : "none",
+        background: "radial-gradient(circle at 50% 38%, #07150d 0%, #030806 72%)",
+        boxShadow: active ? `inset 0 0 0 1px ${T.greenDim}, inset 0 0 60px rgba(57,255,20,0.06)` : "none",
       }}
     >
       {children}
       <div style={labelStyle}>
-        <div style={{ fontSize: 14, letterSpacing: 2 }}>{label}</div>
-        <div style={{ fontSize: 10, opacity: 0.55 }}>{sub}</div>
+        <div style={{ fontSize: 13, letterSpacing: 3, color: T.green, textShadow: T.glow }}>{label}</div>
+        <div style={{ fontSize: 10, color: T.greenDim }}>{sub}</div>
       </div>
     </div>
   );
 }
 
-const FONT = '"Courier New", monospace';
+// Tactical palette.
+const T = {
+  bg: "#040a06",
+  green: "#39ff14",
+  greenSoft: "#7dffa0",
+  greenDim: "rgba(125,255,160,0.55)",
+  greenFaint: "rgba(57,255,20,0.16)",
+  amber: "#ffb000",
+  red: "#ff5a5a",
+  glow: "0 0 6px rgba(57,255,20,0.5)",
+};
+
+const FONT = '"Share Tech Mono", ui-monospace, monospace';
+const DISPLAY = '"Orbitron", sans-serif';
+
+const titleStyle = {
+  fontFamily: DISPLAY,
+  fontWeight: 800,
+  fontSize: 20,
+  letterSpacing: 4,
+  color: T.green,
+  textShadow: "0 0 10px rgba(57,255,20,0.6)",
+};
 
 const barStyle = {
   flex: "0 0 auto",
@@ -236,11 +258,10 @@ const barStyle = {
   alignItems: "center",
   justifyContent: "space-between",
   padding: "10px 16px",
-  color: "#9fe8ff",
+  color: T.greenSoft,
   fontFamily: FONT,
-  textShadow: "0 0 6px rgba(40,180,230,0.45)",
-  background: "#06121b",
-  borderBottom: "1px solid rgba(120,200,235,0.18)",
+  background: "#03070500",
+  borderBottom: `1px solid ${T.greenFaint}`,
   userSelect: "none",
 };
 
@@ -248,9 +269,7 @@ const labelStyle = {
   position: "absolute",
   top: 12,
   left: 14,
-  color: "#9fe8ff",
   fontFamily: FONT,
-  textShadow: "0 0 6px rgba(40,180,230,0.5)",
   pointerEvents: "none",
   userSelect: "none",
 };
@@ -261,26 +280,27 @@ const lockStyle = {
   display: "flex",
   alignItems: "center",
   justifyContent: "center",
-  color: "rgba(159,232,255,0.5)",
+  color: T.greenDim,
   fontFamily: FONT,
   fontSize: 13,
-  letterSpacing: 2,
+  letterSpacing: 3,
   pointerEvents: "none",
 };
 
 const btnStyle = {
   cursor: "pointer",
   background: "transparent",
-  color: "#9fe8ff",
-  border: "1px solid rgba(120,200,235,0.5)",
+  color: T.green,
+  border: `1px solid ${T.greenDim}`,
   padding: "5px 10px",
   fontFamily: FONT,
   fontSize: 12,
   letterSpacing: 1,
+  textShadow: T.glow,
 };
 
-const readyStyle = { color: "#06121b", background: "#6effa0", border: "1px solid #6effa0" };
-const disabledStyle = { opacity: 0.4, cursor: "not-allowed" };
+const readyStyle = { color: T.bg, background: T.green, border: `1px solid ${T.green}`, textShadow: "none", boxShadow: "0 0 12px rgba(57,255,20,0.55)" };
+const disabledStyle = { opacity: 0.35, cursor: "not-allowed", textShadow: "none" };
 
 const flashStyle = {
   position: "absolute",
@@ -288,10 +308,11 @@ const flashStyle = {
   left: "50%",
   transform: "translateX(-50%)",
   zIndex: 11,
-  color: "#06121b",
-  background: "#9fe8ff",
+  color: T.bg,
+  background: T.green,
   padding: "6px 14px",
   fontFamily: FONT,
   fontSize: 12,
   letterSpacing: 1,
+  boxShadow: "0 0 16px rgba(57,255,20,0.5)",
 };

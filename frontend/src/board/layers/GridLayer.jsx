@@ -38,7 +38,7 @@ const GridLayer = () => {
 
     // Grid cell outlines.
     ctx.lineWidth = 1;
-    ctx.strokeStyle = "rgba(120, 200, 235, 0.28)";
+    ctx.strokeStyle = "rgba(57, 255, 20, 0.22)";
     for (const tile of tiles) {
       const { screenX, screenY } = toScreenCoords(tile.x, tile.y, zoom, offsetX, offsetY);
       ctx.beginPath();
@@ -51,12 +51,12 @@ const GridLayer = () => {
     for (const shot of view?.incoming ?? []) {
       const { cx, cy } = tileCenter(shot.x, shot.y, zoom, offsetX, offsetY);
       if (shot.result === "hit") {
-        ctx.fillStyle = "rgba(255, 120, 30, 0.92)";
+        ctx.fillStyle = "rgba(255, 70, 70, 0.95)";
         ctx.beginPath();
         ctx.arc(cx, cy, 5 * zoom, 0, Math.PI * 2);
         ctx.fill();
       } else {
-        ctx.strokeStyle = "rgba(200, 225, 240, 0.7)";
+        ctx.strokeStyle = "rgba(160, 255, 180, 0.6)";
         ctx.lineWidth = 1.25 * zoom;
         ctx.beginPath();
         ctx.arc(cx, cy, 4.5 * zoom, 0, Math.PI * 2);
@@ -71,13 +71,13 @@ const GridLayer = () => {
       if (s.sunk) for (const c of s.cells) sunkCells.add(`${c.x},${c.y}`);
     }
 
-    // Your outgoing shots on this board (red X for hit, white ring for miss).
+    // Your outgoing shots (red X for hit, pale-green ring for miss).
     for (const shot of view?.outgoing ?? []) {
       if (sunkCells.has(`${shot.x},${shot.y}`)) continue;
       const { cx, cy } = tileCenter(shot.x, shot.y, zoom, offsetX, offsetY);
       const r = 6 * zoom;
       if (shot.result === "hit") {
-        ctx.strokeStyle = "#ff3b3b";
+        ctx.strokeStyle = "#ff4444";
         ctx.lineWidth = 2.5 * zoom;
         ctx.beginPath();
         ctx.moveTo(cx - r, cy - r);
@@ -86,7 +86,7 @@ const GridLayer = () => {
         ctx.lineTo(cx - r, cy + r);
         ctx.stroke();
       } else {
-        ctx.strokeStyle = "rgba(235, 245, 255, 0.85)";
+        ctx.strokeStyle = "rgba(160, 255, 180, 0.7)";
         ctx.lineWidth = 1.5 * zoom;
         ctx.beginPath();
         ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
@@ -115,9 +115,9 @@ const GridLayer = () => {
       const { screenX, screenY } = toScreenCoords(hoveredTile.x, hoveredTile.y, zoom, offsetX, offsetY);
       ctx.beginPath();
       tileDiamond(ctx, screenX, screenY, zoom);
-      ctx.fillStyle = "rgba(120, 230, 255, 0.22)";
+      ctx.fillStyle = "rgba(57, 255, 20, 0.18)";
       ctx.fill();
-      ctx.strokeStyle = "rgba(160, 245, 255, 0.95)";
+      ctx.strokeStyle = "rgba(120, 255, 90, 0.95)";
       ctx.lineWidth = 2;
       ctx.stroke();
     }

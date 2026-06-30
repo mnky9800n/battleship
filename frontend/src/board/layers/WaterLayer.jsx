@@ -27,8 +27,8 @@ const WaterLayer = () => {
 
       // Translucent surface sheen, lifted slightly above the seafloor.
       ctx.save();
-      ctx.fillStyle = adjustBrightness("#1f6391", 22);
-      ctx.globalAlpha = 0.55;
+      ctx.fillStyle = adjustBrightness("#0f3a2e", 18);
+      ctx.globalAlpha = 0.5;
       ctx.beginPath();
       ctx.moveTo(screenX, screenY + surfaceOffset);
       ctx.lineTo(screenX + (tileWidth / 2) * zoom, screenY + (tileHeight / 2) * zoom + surfaceOffset);
