@@ -1,0 +1,17 @@
+[Unit]
+Description=Battleship backend (uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+# Adjust User and paths to match where you cloned the repo on homebase.
+User=battleship
+WorkingDirectory=/opt/battleship/backend
+Environment=BATTLESHIP_DB=/opt/battleship/backend/battleship.db
+# Bind to localhost only — Caddy terminates TLS and proxies to it.
+ExecStart=/opt/battleship/backend/.venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8000
+Restart=always
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target
