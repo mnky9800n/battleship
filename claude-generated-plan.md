@@ -174,6 +174,26 @@ These were the open questions; resolved together on 2026-06-30.
 
 ---
 
+## Backend + real multiplayer (resolved 2026-06-30)
+
+Status: the renderer, contract-first in-browser `MockServer`, two-board UI, placement phase, tactical theme, and Pages auto-deploy to `johnspace.xyz/battleship` are all done and live. The deployed game runs the authority **in the browser**, so it is single-player-only and not cheat-proof (enemy ship positions sit in client memory). This section is the plan to move the authority server-side.
+
+### Decisions
+- **Host:** the backend runs on homebase at `api.johnspace.xyz` (an A record to homebase's public IP — no subdomain-takeover risk since it's our own server), TLS via Let's Encrypt (Caddy). CORS / WS-origin allow `https://johnspace.xyz`.
+- **First multiplayer cut:** login → create/join a game **by code** → two humans play server-side. The full matchmaking lobby (presence + challenge + 60s challenge grace) comes later.
+- **AI:** the hunt/target AI becomes a **server-side bot** (`playerAI`); vs-AI games are real server games (recorded, leaderboard-counted, same code path as human games).
+- **Passwords:** **bcrypt** hashes in SQLite (via `passlib`). Otherwise minimal security per the trial.
+- **Offline mode:** the in-browser `MockServer` is kept as an explicit "practice vs AI" mode; all real games go through the server.
+
+### Approach
+- `backend/app/engine.py` is a faithful Python port of `frontend/src/net/MockServer.js` (placement, the fire pipeline, hunt/target AI, per-player redaction) — that file is the already-tested reference spec.
+- FastAPI + `python-socketio` (ASGI/uvicorn). REST `POST /signup` (assigns a Hackers avatar) + `POST /login` (session token). Socket identity is bound `sid → user_id` on connect; payload identity is ignored.
+- SQLite tables: `users`, `games`, `moves` (append-only `(player,x,y,result)` log). Live games in memory; reconnect re-pushes the redacted snapshot; grace timeout = forfeit.
+- Frontend gains a `SocketTransport` swapped in behind `GameClient` (UI unchanged), chosen by `REACT_APP_API_URL`; plus a login + minimal lobby screen.
+- The core verification at every step: confirm an opponent's **un-sunk ships never appear in any client payload**.
+
+---
+
 ## Verification
 
 - **Renderer slice:** run the forked React app locally; confirm a 10x10 water grid renders, hovering highlights the correct cell (via `screenToTile`), clicking selects/fires, and one `.glb` ship renders on the board from the mock `your_view`.
