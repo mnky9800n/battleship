@@ -27,3 +27,7 @@ notes: i have selected and added boat assets, these should look good on the map,
 I made a design doc called battleship_design_doc.pdf. it serves as the core design doc for the whole game and can be used by claude code to build everything. I gave this design doc to claude who gave some helpful additional diagrams to add that included some loops i didn't think about that would make the timeouts for disconnects more explicit in teh design doc. timeouts can come from two reasons, out of game during a challenge to another player the other player doesn't reply you within the given grace period (currently 60 seconds), or, during gameplay, the player logs out or disconnects for whatever reason for longer than the grace period.
 
 added ship assets. now there are 3d models of ships to use.
+
+# day 2 - part 1
+
+I have looped claude-code in on the design document and now we are iterating on the plan. learning websockets as fast as possible. love learning new shit.
