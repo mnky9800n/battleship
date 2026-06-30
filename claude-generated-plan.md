@@ -161,14 +161,16 @@ Username/password account creation; on creation auto-assign a Hackers character 
 
 ---
 
-## Open design questions (for back-and-forth)
+## Resolved decisions (v1)
 
-1. **Backend framework:** FastAPI + python-socketio (recommended) vs Flask-SocketIO (closer to the doc's Flask mention). Preference?
-2. **Turn timer:** include the 15-second turn countdown in v1, or grace-timer-only?
-3. **Server-restart survival:** v1 = page-refresh only (doc minimum), or invest in live-game snapshotting to SQLite?
-4. **Frontend tooling:** keep CRA (fastest reuse) or migrate the fork to Vite up front?
-5. **AI difficulty:** hunt/target only, or full probability-density targeting for a stronger opponent?
-6. **Scope ordering:** is "renderer slice first" the right opening move, or do you want backend-first?
+These were the open questions; resolved together on 2026-06-30.
+
+1. **Backend framework:** FastAPI + python-socketio (served by uvicorn). FastAPI is familiar from ML model-serving; Socket.IO rooms + auto-reconnect map onto games and the grace timer.
+2. **Turn timer:** grace timer only (60s, for disconnect + unanswered challenge). No 15-second per-turn countdown in v1; can be added later for anti-stalling.
+3. **Server-restart survival:** page-refresh survival only (the doc's minimum). Live games live in memory and replay the move log on resume; a homebase restart loses live games. Snapshotting is a later nice-to-have.
+4. **Frontend tooling:** keep CRA, fork rainy-city as-is for fastest reuse. Migrate to Vite later only if CRA actually bites.
+5. **AI difficulty:** hunt/target (probe adjacent cells after a hit, parity-pattern otherwise). Meets the "moderately intelligent" requirement; spike effort goes to Sentience instead.
+6. **Build order:** renderer slice first, to kill the biggest unknown before the backend exists.
 
 ---
 
