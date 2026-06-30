@@ -350,6 +350,8 @@ export default class MockServer {
       status: g.status,
       whoseTurn: g.turn,
       winner: g.winner,
+      youReady: g.status !== "setup",
+      enemyReady: true, // the AI is always ready in offline practice
       lastShot: last || null,
       own: this.viewFor("own"),
       enemy: this.viewFor("enemy"),

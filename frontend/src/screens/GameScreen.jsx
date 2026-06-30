@@ -87,12 +87,7 @@ export default function GameScreen({ client, snap, notify, onExit }) {
         </div>
 
         {isSetup ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <span style={{ fontSize: 13, color: T.greenDim }}>drag ships onto your waters</span>
-            <button onClick={rotate} style={btnStyle}>⟳ ROTATE [{orientation === "h" ? "H" : "V"}]</button>
-            <button onClick={() => client.clearPlacement()} style={btnStyle}>✕ CLEAR</button>
-            <button onClick={() => client.ready()} disabled={!allPlaced} style={{ ...btnStyle, ...(allPlaced ? solidBtnStyle : disabledStyle) }}>▶ READY</button>
-          </div>
+          <span style={{ fontSize: 14, color: T.greenDim }}>// deploy your fleet — drag ships from the menu onto the map</span>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <span style={{ fontSize: 17, color: statusColor, textShadow: T.glow }}>
@@ -107,22 +102,36 @@ export default function GameScreen({ client, snap, notify, onExit }) {
         )}
       </div>
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        <Panel label="YOUR WATERS" sub={isSetup ? "drag ships here" : "your fleet · incoming fire"} active={isSetup}>
-          <BoardRenderer
-            view={snap.own}
-            onTileClick={isSetup ? handlePlace : undefined}
-            onRotate={isSetup ? rotate : undefined}
-            onDropTile={isSetup ? handlePlace : undefined}
-            placement={placement}
-          />
-          {isSetup && <ShipMenu placed={placed} orientation={orientation} onPick={setSelectedKind} />}
-        </Panel>
-        <Panel label="ENEMY WATERS" sub={isSetup ? "locked until ready" : "your shots · click to fire"} divider active={yourTurn && isPlaying}>
-          <BoardRenderer view={snap.enemy} onTileClick={isPlaying ? handleFire : undefined} />
-          {isSetup && <div style={lockStyle}>◵ AWAITING DEPLOYMENT</div>}
-        </Panel>
-      </div>
+      {isSetup ? (
+        // SETUP: ship menu (left) · single map (center) · controls (right).
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          <ShipMenu placed={placed} onPick={setSelectedKind} />
+          <Panel label="YOUR WATERS" sub="drag ships onto the map" active>
+            <BoardRenderer view={snap.own} onTileClick={handlePlace} onRotate={rotate} onDropTile={handlePlace} placement={placement} />
+          </Panel>
+          <div style={controlsCol}>
+            <div style={sideTitle}>DEPLOYMENT</div>
+            <div style={{ fontSize: 15 }}>{remaining.length} ship{remaining.length !== 1 ? "s" : ""} left to place</div>
+            <button onClick={rotate} style={btnStyle}>⟳ ROTATE [{orientation === "h" ? "HORIZ" : "VERT"}]</button>
+            <button onClick={() => client.clearPlacement()} style={btnStyle}>✕ CLEAR</button>
+            <button onClick={() => client.ready()} disabled={!allPlaced} style={{ ...btnStyle, ...(allPlaced ? solidBtnStyle : disabledStyle), fontSize: 16, padding: "12px 16px" }}>▶ READY</button>
+            <div style={readyBox}>
+              <div>you: <b style={{ color: snap.youReady ? T.green : T.amber }}>{snap.youReady ? "READY" : "placing…"}</b></div>
+              <div>enemy: <b style={{ color: snap.enemyReady ? T.green : T.amber }}>{snap.enemyReady ? "READY" : "placing…"}</b></div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // PLAY: two boards side by side.
+        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          <Panel label="YOUR WATERS" sub="your fleet · incoming fire">
+            <BoardRenderer view={snap.own} />
+          </Panel>
+          <Panel label="ENEMY WATERS" sub="your shots · click to fire" divider active={yourTurn && isPlaying}>
+            <BoardRenderer view={snap.enemy} onTileClick={isPlaying ? handleFire : undefined} />
+          </Panel>
+        </div>
+      )}
 
       {/* win/lose popup */}
       {over && (
@@ -201,12 +210,11 @@ const barStyle = {
   borderBottom: `1px solid ${T.greenFaint}`, userSelect: "none",
 };
 const labelStyle = { position: "absolute", top: 12, left: 14, fontFamily: FONT, pointerEvents: "none", userSelect: "none" };
-const lockStyle = {
-  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-  color: T.greenDim, fontFamily: FONT, fontSize: 13, letterSpacing: 3, pointerEvents: "none",
-};
 const disabledStyle = { opacity: 0.35, cursor: "not-allowed", textShadow: "none", background: "transparent", color: T.green, boxShadow: "none" };
-const shipMenuStyle = { position: "absolute", top: 56, left: 14, zIndex: 5, display: "flex", flexDirection: "column", gap: 8, padding: 14, background: "rgba(4,10,6,0.85)", border: `1px solid ${T.greenDim}`, fontFamily: FONT, color: T.greenSoft, userSelect: "none" };
-const shipItem = { display: "flex", alignItems: "center", gap: 12, padding: "7px 9px", border: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.04)" };
+const shipMenuStyle = { width: 230, display: "flex", flexDirection: "column", gap: 10, padding: 16, borderRight: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)", fontFamily: FONT, color: T.greenSoft, userSelect: "none" };
+const shipItem = { display: "flex", alignItems: "center", gap: 12, padding: "9px 10px", border: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.04)" };
+const controlsCol = { width: 230, display: "flex", flexDirection: "column", gap: 12, padding: 16, borderLeft: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)", fontFamily: FONT, color: T.greenSoft };
+const sideTitle = { fontSize: 17, letterSpacing: 2, color: T.green, textShadow: T.glow };
+const readyBox = { marginTop: "auto", fontSize: 15, lineHeight: 1.9, paddingTop: 12, borderTop: `1px solid ${T.greenFaint}` };
 const overWrap = { position: "absolute", inset: 0, background: "rgba(2,6,4,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70 };
 const overModal = { textAlign: "center", padding: "40px 56px", border: "2px solid", background: "#06120b" };
