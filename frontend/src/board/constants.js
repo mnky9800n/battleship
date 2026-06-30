@@ -3,7 +3,8 @@
 
 export const tileConfig = {
   water: {
-    color: "#1f6391", // deep ocean; no texture, drawTile falls back to this color
+    // Dark teal-green "tactical" ocean; no texture, drawTile falls back to color.
+    color: "#0c2a22",
   },
 };
 
