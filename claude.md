@@ -54,7 +54,7 @@ Standard Battleship on a **10×10 grid** (columns A–J, rows 1–10). Fleet: Ca
 
 ### Frontend views (wireframes in the design doc)
 
-- **Start page:** animated ship hero + username/password login + "create new user."
+- **Start page:** animated ship hero + username/password login + "create new user." Movie-trailer tagline (see Todos): _"From the creator of STREETS OF RAINY-CITY.COM and the mayor of RAINY-CITY.COM comes BATTLESHIP!"_
 - **App shell:** header (`battleship!`, "Active battle available" challenge indicator, logout) + three tabs (`matchmaking`, `game`, `leaderboard`) + main viewer + footer. Lands on matchmaking after login.
 - **Matchmaking:** scrollable user list with presence dots (green online / red offline / robot = AI), selected user's profile (avatar, Wins/Losses), and a "CHALLENGE TO BATTLE!" button that notifies the target.
 
@@ -62,6 +62,10 @@ Standard Battleship on a **10×10 grid** (columns A–J, rows 1–10). Fleet: Ca
 - **Game (setup):** isometric battle map, draggable ship menu using the real `.glb` assets, drag-drop placement with splash, zoom on scroll, a "Ready!" button (enabled only when all ships placed) and an enemy-readiness indicator.
 - **Game (play):** two maps side by side — your fleet (incoming hits) and your shots on the enemy — with an active-turn indicator, "Confirm target!" (enabled only on your turn with a cell selected), destruction animations (5× on hit, 1× on miss), sunk ships recolored red, and a win/loss popup that returns to matchmaking.
 - **Leaderboard:** Player / Wins / Losses, ordered by wins, live even during play.
+
+## Todos & ideas
+
+- **Start-page tagline (fun):** the sign-in page should display, in a big movie-trailer voice, something like _"From the creator of STREETS OF RAINY-CITY.COM and the mayor of RAINY-CITY.COM comes BATTLESHIP!"_
 
 ## Notes & gotchas
 
