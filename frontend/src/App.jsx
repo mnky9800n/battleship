@@ -109,7 +109,7 @@ export default function App() {
       <div style={barStyle}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 14 }}>
           <span style={titleStyle}>BATTLESHIP</span>
-          <span style={{ fontSize: 11, color: T.greenDim }}>
+          <span style={{ fontSize: 15, color: T.greenDim }}>
             {isSetup
               ? "// deploy fleet · click drop · right-click rotate"
               : "// drag pan · wheel zoom · click enemy grid to fire"}
@@ -127,7 +127,7 @@ export default function App() {
                 onClick={() => setSelectedKind(k)}
               />
             ))}
-            <span style={{ fontSize: 11, color: T.greenDim, width: 58 }}>
+            <span style={{ fontSize: 14, color: T.greenDim, width: 72 }}>
               [{orientation === "h" ? "HORIZ" : "VERT"}]
             </span>
             <button onClick={() => client.clearPlacement()} style={btnStyle}>✕ CLEAR</button>
@@ -141,7 +141,7 @@ export default function App() {
           </div>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <span style={{ fontSize: 13, color: statusColor, textShadow: T.glow }}>
+            <span style={{ fontSize: 17, color: statusColor, textShadow: T.glow }}>
               {over
                 ? won
                   ? "ENEMY FLEET DESTROYED // VICTORY"
@@ -150,7 +150,7 @@ export default function App() {
                 ? "YOUR TURN // FIRE AT WILL"
                 : "ENEMY TURN //"}
             </span>
-            <span style={{ fontSize: 12, color: T.greenDim }}>
+            <span style={{ fontSize: 15, color: T.greenDim }}>
               last: {coord(snap?.lastShot)}
               {snap?.lastShot?.result ? ` [${snap.lastShot.result}${snap.lastShot.sunkShip ? " · SANK " + snap.lastShot.sunkShip.toUpperCase() : ""}]` : ""}
             </span>
@@ -191,9 +191,9 @@ function ShipChip({ kind, placed, selected, onClick }) {
       style={{
         cursor: "pointer",
         fontFamily: FONT,
-        fontSize: 11,
+        fontSize: 14,
         letterSpacing: 0.5,
-        padding: "5px 8px",
+        padding: "7px 10px",
         color: selected ? T.bg : T.green,
         background: selected ? T.green : "transparent",
         border: `1px solid ${selected ? T.green : T.greenDim}`,
@@ -221,8 +221,8 @@ function Panel({ label, sub, divider, active, children }) {
     >
       {children}
       <div style={labelStyle}>
-        <div style={{ fontSize: 13, letterSpacing: 3, color: T.green, textShadow: T.glow }}>{label}</div>
-        <div style={{ fontSize: 10, color: T.greenDim }}>{sub}</div>
+        <div style={{ fontSize: 18, letterSpacing: 4, color: T.green, textShadow: T.glow }}>{label}</div>
+        <div style={{ fontSize: 13, color: T.greenDim }}>{sub}</div>
       </div>
     </div>
   );
@@ -246,8 +246,8 @@ const DISPLAY = '"Orbitron", sans-serif';
 const titleStyle = {
   fontFamily: DISPLAY,
   fontWeight: 800,
-  fontSize: 20,
-  letterSpacing: 4,
+  fontSize: 30,
+  letterSpacing: 6,
   color: T.green,
   textShadow: "0 0 10px rgba(57,255,20,0.6)",
 };
@@ -282,8 +282,8 @@ const lockStyle = {
   justifyContent: "center",
   color: T.greenDim,
   fontFamily: FONT,
-  fontSize: 13,
-  letterSpacing: 3,
+  fontSize: 18,
+  letterSpacing: 4,
   pointerEvents: "none",
 };
 
@@ -292,9 +292,9 @@ const btnStyle = {
   background: "transparent",
   color: T.green,
   border: `1px solid ${T.greenDim}`,
-  padding: "5px 10px",
+  padding: "7px 12px",
   fontFamily: FONT,
-  fontSize: 12,
+  fontSize: 14,
   letterSpacing: 1,
   textShadow: T.glow,
 };
@@ -310,9 +310,9 @@ const flashStyle = {
   zIndex: 11,
   color: T.bg,
   background: T.green,
-  padding: "6px 14px",
+  padding: "8px 16px",
   fontFamily: FONT,
-  fontSize: 12,
+  fontSize: 15,
   letterSpacing: 1,
   boxShadow: "0 0 16px rgba(57,255,20,0.5)",
 };
