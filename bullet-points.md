@@ -17,3 +17,14 @@ https://medium.com/@nbazer00/how-i-built-battleship-from-scratch-in-javascript-3
 - ship size 4: Container Ship by Alex Safayan [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/3AmDGcCu6Ll)
 - ship size 2: Cruise Ship by Quaternius (https://poly.pizza/m/yq9EKmEmfC)
 - ship size 1: Boat by Poly by Google [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/84-DYhLzxNq)
+
+# avatars (player headshots)
+auto-assigned to each new account on creation. headshots of characters from the movie Hackers (1995). source images + license TBD, fill in per file before shipping. suggested location: assets/avatars/
+
+- TODO: Dade "Zero Cool / Crash Override" Murphy — source: TBD, license: TBD
+- TODO: Kate "Acid Burn" Libby — source: TBD, license: TBD
+- TODO: Emmanuel "Cereal Killer" Goldstein — source: TBD, license: TBD
+- TODO: Paul "Lord Nikon" Cook — source: TBD, license: TBD
+- TODO: "The Phantom Phreak" Ramon Sanchez — source: TBD, license: TBD
+- TODO: Joey Pardella — source: TBD, license: TBD
+- TODO: Eugene "The Plague" Belford — source: TBD, license: TBD
