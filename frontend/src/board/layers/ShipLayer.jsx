@@ -217,7 +217,7 @@ const ShipLayer = () => {
   return (
     <div
       ref={containerRef}
-      style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }}
+      style={{ position: "absolute", inset: 0, zIndex: 3, pointerEvents: "none" }}
     />
   );
 };

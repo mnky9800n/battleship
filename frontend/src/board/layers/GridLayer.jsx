@@ -63,8 +63,16 @@ const GridLayer = () => {
       }
     }
 
+    // Cells of fully-sunk ships: the .glb model is revealed there, so we skip
+    // the hit-marker so the model shows instead of red Xs.
+    const sunkCells = new Set();
+    for (const s of view?.ships ?? []) {
+      if (s.sunk) for (const c of s.cells) sunkCells.add(`${c.x},${c.y}`);
+    }
+
     // Your outgoing shots on this board (red X for hit, white ring for miss).
     for (const shot of view?.outgoing ?? []) {
+      if (sunkCells.has(`${shot.x},${shot.y}`)) continue;
       const { cx, cy } = tileCenter(shot.x, shot.y, zoom, offsetX, offsetY);
       const r = 6 * zoom;
       if (shot.result === "hit") {
@@ -103,7 +111,7 @@ const GridLayer = () => {
       ref={canvasRef}
       width={dimensions.width}
       height={dimensions.height}
-      style={{ position: "absolute", inset: 0, zIndex: 3, pointerEvents: "none" }}
+      style={{ position: "absolute", inset: 0, zIndex: 2, pointerEvents: "none" }}
     />
   );
 };
