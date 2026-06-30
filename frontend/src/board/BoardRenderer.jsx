@@ -14,7 +14,7 @@ const BOARD_PX_H = (gridWidth + gridHeight) * (tileHeight / 2);
 // mousemove handler that reports the hovered tile. Pointer coordinates are made
 // relative to this panel so several boards can coexist. Drag is distinguished
 // from click so a pan does not fire a shot.
-const ViewContainer = ({ onTileClick }) => {
+const ViewContainer = ({ onTileClick, onRotate }) => {
   const containerRef = useRef(null);
   const {
     dimensions,
@@ -96,6 +96,12 @@ const ViewContainer = ({ onTileClick }) => {
     if (tile && onTileClick) onTileClick(tile);
   };
 
+  const handleContextMenu = (e) => {
+    if (!onRotate) return;
+    e.preventDefault(); // suppress the browser menu; right-click rotates instead
+    onRotate();
+  };
+
   return (
     <div
       ref={containerRef}
@@ -104,6 +110,7 @@ const ViewContainer = ({ onTileClick }) => {
       onMouseUp={handleMouseUp}
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
+      onContextMenu={handleContextMenu}
       style={{
         position: "absolute",
         inset: 0,
@@ -119,7 +126,7 @@ const ViewContainer = ({ onTileClick }) => {
 };
 
 // Measures its own panel so the board sizes to its container, not the window.
-const BoardRenderer = ({ view, onTileClick }) => {
+const BoardRenderer = ({ view, onTileClick, onRotate, placement = null }) => {
   const rootRef = useRef(null);
   const [dim, setDim] = useState({ width: 0, height: 0 });
 
@@ -141,8 +148,8 @@ const BoardRenderer = ({ view, onTileClick }) => {
   return (
     <div ref={rootRef} style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
       {dim.width > 0 && (
-        <BoardProvider view={view} dimensions={dim} initialZoom={fit}>
-          <ViewContainer onTileClick={onTileClick} />
+        <BoardProvider view={view} dimensions={dim} placement={placement} initialZoom={fit}>
+          <ViewContainer onTileClick={onTileClick} onRotate={onRotate} />
         </BoardProvider>
       )}
     </div>

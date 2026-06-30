@@ -28,6 +28,18 @@ export default class GameClient {
     return this.transport.startVsAI();
   }
 
+  placeShip(kind, cells) {
+    this.transport.placeShip(kind, cells);
+  }
+
+  clearPlacement() {
+    this.transport.clearPlacement();
+  }
+
+  ready() {
+    this.transport.ready();
+  }
+
   fire(x, y) {
     // Identity ("you") is bound by the transport, mirroring the design's
     // socket-bound identity. A real client would not pass the actor at all.

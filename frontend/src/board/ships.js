@@ -20,3 +20,27 @@ export function orientationOf(cells) {
   if (cells.length < 2) return "h";
   return cells[0].x === cells[1].x ? "v" : "h";
 }
+
+// Cells a ship would occupy from an anchor cell, in a given orientation.
+export function footprintCells(anchor, length, orientation) {
+  const cells = [];
+  for (let i = 0; i < length; i++) {
+    cells.push({
+      x: orientation === "h" ? anchor.x + i : anchor.x,
+      y: orientation === "v" ? anchor.y + i : anchor.y,
+    });
+  }
+  return cells;
+}
+
+// A placement is legal if every cell is on the board and unoccupied.
+export function placementValid(cells, occupied) {
+  return cells.every(
+    (c) =>
+      c.x >= 0 &&
+      c.x < BOARD_SIZE &&
+      c.y >= 0 &&
+      c.y < BOARD_SIZE &&
+      !occupied.has(`${c.x},${c.y}`)
+  );
+}
