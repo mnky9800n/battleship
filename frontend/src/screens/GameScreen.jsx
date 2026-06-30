@@ -105,7 +105,9 @@ export default function GameScreen({ client, snap, notify, onExit }) {
 
       {isSetup ? (
         // SETUP: ship menu (left) · single map (center) · controls (right).
-        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+        // Keyed so React fully remounts on the setup<->play switch instead of
+        // reusing a board (which would carry the wrong zoom across the change).
+        <div key="setup" style={{ flex: 1, display: "flex", minHeight: 0 }}>
           <ShipMenu placed={placed} onPick={setSelectedKind} />
           <Panel label="YOUR WATERS" sub="drag ships onto the map" active>
             <BoardRenderer view={snap.own} onTileClick={handlePlace} onRotate={rotate} onDropTile={handlePlace} placement={placement} />
@@ -124,12 +126,12 @@ export default function GameScreen({ client, snap, notify, onExit }) {
         </div>
       ) : (
         // PLAY: two boards side by side.
-        <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+        <div key="play" style={{ flex: 1, display: "flex", minHeight: 0 }}>
           <Panel label="YOUR WATERS" sub="your fleet · incoming fire">
-            <BoardRenderer view={snap.own} />
+            <BoardRenderer key="own" view={snap.own} />
           </Panel>
           <Panel label="ENEMY WATERS" sub="your shots · click to fire" divider active={yourTurn && isPlaying}>
-            <BoardRenderer view={snap.enemy} onTileClick={isPlaying ? handleFire : undefined} />
+            <BoardRenderer key="enemy" view={snap.enemy} onTileClick={isPlaying ? handleFire : undefined} />
           </Panel>
         </div>
       )}
