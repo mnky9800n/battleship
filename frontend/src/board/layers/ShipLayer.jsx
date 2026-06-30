@@ -162,17 +162,21 @@ const ShipLayer = () => {
         const model = sceneModel.clone(true);
 
         // Sunk ships are recolored red (design doc), tinting each material.
+        // Preserve the original single-vs-array material shape: replacing a
+        // single material with a 1-element array renders nothing (no geometry
+        // groups), which previously made sunk ships invisible.
         if (ship.sunk) {
           model.traverse((child) => {
-            if (child.material) {
-              const mats = Array.isArray(child.material) ? child.material : [child.material];
-              child.material = mats.map((m) => {
-                const tinted = m.clone();
-                if (tinted.color) tinted.color.setHex(0xc0392b);
-                return tinted;
-              });
-              if (!Array.isArray(child.material)) child.material = child.material[0];
-            }
+            if (!child.material) return;
+            const wasArray = Array.isArray(child.material);
+            const mats = wasArray ? child.material : [child.material];
+            const tinted = mats.map((m) => {
+              const t = m.clone();
+              if (t.color) t.color.setHex(0xc0392b);
+              if (t.map) t.map = null; // drop texture so the red tint reads clearly
+              return t;
+            });
+            child.material = wasArray ? tinted : tinted[0];
           });
         }
 
