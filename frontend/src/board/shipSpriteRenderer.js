@@ -1,15 +1,16 @@
 import * as THREE from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { SHIP_KINDS } from "./ships.js";
 
 // ONE shared WebGL renderer (a single GL context for the whole ship menu).
 // paintShip renders a ship to the shared canvas, then copies the frame into a
 // per-sprite 2D canvas. 2D canvases have no context limit, so we can show all
-// five ships without exhausting WebGL (which crashed when each had its own
-// renderer). Renders are serialized so they share the one context safely.
+// five ships without exhausting WebGL. Renders are serialized.
+//
+// The camera AUTO-FITS each model's bounding box, so every ship fills its frame
+// regardless of its native size/proportions (a fixed frustum framed only one of
+// the five and clipped the rest to nothing).
 
 const loader = new GLTFLoader();
-const HALF_H = 1.5; // half view height; width derives from each canvas aspect
 
 let renderer, scene, camera;
 let chain = Promise.resolve();
@@ -19,13 +20,11 @@ function ensure() {
   if (renderer) return;
   renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true, preserveDrawingBuffer: true });
   scene = new THREE.Scene();
-  scene.add(new THREE.AmbientLight(0xffffff, 1.7));
+  scene.add(new THREE.AmbientLight(0xffffff, 1.8));
   const key = new THREE.DirectionalLight(0xffffff, 1.6);
   key.position.set(1, 4, 5);
   scene.add(key);
-  camera = new THREE.OrthographicCamera(-1, 1, HALF_H, -HALF_H, 0.01, 100);
-  camera.position.set(0, 0.5, 8); // side view, slight elevation
-  camera.lookAt(0, 0, 0);
+  camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.01, 100);
 }
 
 function loadModel(kind) {
@@ -46,10 +45,6 @@ async function paint(kind, target) {
   const h = target.height;
   if (!w || !h) return;
   renderer.setSize(w, h, false);
-  const aspect = w / h;
-  camera.left = -HALF_H * aspect;
-  camera.right = HALF_H * aspect;
-  camera.updateProjectionMatrix();
 
   const model = (await loadModel(kind)).clone(true);
   const box = new THREE.Box3().setFromObject(model);
@@ -57,12 +52,24 @@ async function paint(kind, target) {
   const size = new THREE.Vector3();
   box.getCenter(center);
   box.getSize(size);
-  model.position.sub(center);
-  if (size.z > size.x) model.rotation.y = Math.PI / 2; // hull length -> X
-  const lengthDim = Math.max(size.x, size.z) || 1;
-  model.scale.setScalar(SHIP_KINDS[kind].length / lengthDim); // length = N cells
-
+  model.position.sub(center); // center at origin
+  if (size.z > size.x) model.rotation.y = Math.PI / 2; // hull length -> X (consistent facing)
   scene.add(model);
+
+  // Auto-fit an orthographic frustum to the model's bounding sphere.
+  const radius = 0.5 * Math.hypot(size.x, size.y, size.z) || 1;
+  const m = radius * 1.15;
+  const aspect = w / h;
+  camera.left = -m * aspect;
+  camera.right = m * aspect;
+  camera.top = m;
+  camera.bottom = -m;
+  camera.near = 0.01;
+  camera.far = radius * 40;
+  camera.position.set(0, radius * 1.1, radius * 5); // near-side view, slight elevation
+  camera.lookAt(0, 0, 0);
+  camera.updateProjectionMatrix();
+
   renderer.render(scene, camera);
   const ctx = target.getContext("2d");
   ctx.clearRect(0, 0, w, h);
