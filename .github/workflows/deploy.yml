@@ -36,7 +36,9 @@ jobs:
           cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        # Prefer the reproducible `npm ci`, but fall back to `npm install` so a
+        # lockfile drift (e.g. local npm 11 vs CI npm 10) can't block the deploy.
+        run: npm ci || npm install
 
       - name: Build
         run: npm run build
