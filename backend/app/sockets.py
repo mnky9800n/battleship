@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from . import auth, brain, db
+from . import auth, brain, db, sentience
 from .engine import Game, GameError, random_fleet
 
 BOT = db.BOT_USERNAME
@@ -80,12 +80,29 @@ def register(sio) -> None:
         for p in game.players:
             if user_game.get(p) == game.id:
                 user_game.pop(p, None)
+        # If the player opted into Sentience for this vs-AI game, write a recap
+        # memory back to their account.
+        if game.vs_ai and getattr(game, "ai_key", None):
+            human = game.players[0]
+            result = "won" if game.winner == human else "lost"
+            try:
+                await sentience.write_memory(
+                    game.ai_key,
+                    f"Played a game of Battleship against the AI opponent and {result}.",
+                )
+            except Exception as e:
+                print("sentience: write recap failed:", e)
         await broadcast_lobby()  # leaderboard + presence refresh
 
     async def run_bot(game: Game) -> None:
         await asyncio.sleep(BOT_DELAY)
         if game.status != "playing" or game.turn != BOT:
             return
+        # First bot turn: if the player opted in with a Sentience key, fetch +
+        # summarize their memories once to flavor the taunts.
+        if getattr(game, "ai_key", None) and not getattr(game, "ai_summary_fetched", True):
+            game.ai_summary_fetched = True
+            game.ai_sentience_summary = await sentience.summarize(game.ai_key)
         # Claude picks the move + taunt (hunt/target fallback inside the brain).
         move = await brain.take_turn(game, BOT, getattr(game, "ai_sentience_summary", None))
         if not move:
@@ -115,12 +132,16 @@ def register(sio) -> None:
 
     # --- game creation --------------------------------------------------
 
-    async def create_match(a: str, b: str, vs_ai: bool = False) -> None:
+    async def create_match(a: str, b: str, vs_ai: bool = False, sentience_key: str | None = None) -> None:
         gid = uuid.uuid4().hex[:12]
         game = Game(gid, [a, b], vs_ai=vs_ai)
         if vs_ai:
             game.fleets[BOT] = random_fleet()
             game.set_ready(BOT)
+            # Optional, per-game, in-memory only. Drives memory-grounded taunts.
+            game.ai_key = sentience_key
+            game.ai_sentience_summary = None
+            game.ai_summary_fetched = False
         games[gid] = game
         for p in (a, b):
             if p == BOT:
@@ -191,7 +212,7 @@ def register(sio) -> None:
             return await emit_error(sid, "invalid opponent")
 
         if target == BOT:
-            return await create_match(challenger, BOT, vs_ai=True)
+            return await create_match(challenger, BOT, vs_ai=True, sentience_key=(data or {}).get("sentienceKey"))
 
         if not user_sids.get(target):
             return await emit_error(sid, "that player is offline")

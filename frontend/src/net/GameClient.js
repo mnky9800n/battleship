@@ -34,8 +34,8 @@ export default class GameClient {
     this.transport.refreshLobby?.();
   }
 
-  challenge(target) {
-    this.transport.challenge(target);
+  challenge(target, sentienceKey) {
+    this.transport.challenge(target, sentienceKey);
   }
 
   respondChallenge(accept) {

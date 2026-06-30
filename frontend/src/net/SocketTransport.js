@@ -70,8 +70,8 @@ export default class SocketTransport {
     if (this.lastLobby) this.emit("lobby_update", this.lastLobby);
   }
 
-  challenge(target) {
-    this.socket?.emit("challenge", { target });
+  challenge(target, sentienceKey) {
+    this.socket?.emit("challenge", { target, sentienceKey });
   }
 
   respondChallenge(accept) {

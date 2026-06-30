@@ -75,7 +75,7 @@ export default function Shell({ client, user, notify, onLogout }) {
       <main style={{ flex: 1, minHeight: 0, position: "relative" }}>
         {tab === "matchmaking" && (
           <Matchmaking users={users} me={user.username} outgoing={outgoing}
-            onChallenge={(t) => client.challenge(t)} onCancel={() => { client.cancelChallenge(); setOutgoing(null); }} />
+            onChallenge={(t, key) => client.challenge(t, key)} onCancel={() => { client.cancelChallenge(); setOutgoing(null); }} />
         )}
         {tab === "leaderboard" && <Leaderboard users={users} />}
         {tab === "game" && (

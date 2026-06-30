@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { T, FONT, solidBtnStyle, btnStyle } from "../theme.js";
+import { T, FONT, solidBtnStyle, btnStyle, inputStyle } from "../theme.js";
 
 // Design-doc matchmaking: a list of all registered users with presence, and a
 // profile panel for the selected user with a CHALLENGE TO BATTLE button.
@@ -12,6 +12,7 @@ function avatarUrl(u) {
 
 export default function Matchmaking({ users, me, outgoing, onChallenge, onCancel }) {
   const [selected, setSelected] = useState(null);
+  const [skey, setSkey] = useState("");
   const sel = users.find((u) => u.username === selected) || null;
   const isSelf = sel?.username === me;
   const challengeable = sel && !isSelf && (sel.presence === "online" || sel.presence === "ai") && !sel.inGame;
@@ -60,12 +61,25 @@ export default function Matchmaking({ users, me, outgoing, onChallenge, onCancel
               <span>Wins: <b style={{ color: T.green }}>{sel.wins}</b></span>
               <span>Losses: <b style={{ color: T.red }}>{sel.losses}</b></span>
             </div>
+            {sel.presence === "ai" && (
+              <input
+                style={{ ...inputStyle, marginBottom: 12, fontSize: 13 }}
+                placeholder="Sentience key (optional, for personalized taunts)"
+                value={skey}
+                onChange={(e) => setSkey(e.target.value)}
+              />
+            )}
             <button
               style={{ ...solidBtnStyle, fontSize: 22, padding: "16px 24px", opacity: challengeable ? 1 : 0.4, cursor: challengeable ? "pointer" : "not-allowed" }}
               disabled={!challengeable}
-              onClick={() => onChallenge(sel.username)}>
+              onClick={() => onChallenge(sel.username, sel.presence === "ai" ? skey.trim() || undefined : undefined)}>
               ⚔ CHALLENGE TO BATTLE!
             </button>
+            {sel.presence === "ai" && (
+              <div style={{ fontSize: 11, color: T.greenDim, marginTop: 8 }}>
+                optional · your key is used only for this game, never stored
+              </div>
+            )}
             {isSelf && <div style={{ fontSize: 15, color: T.greenDim, marginTop: 10 }}>that's you</div>}
             {sel.inGame && <div style={{ fontSize: 15, color: T.amber, marginTop: 10 }}>already in a game</div>}
           </>
