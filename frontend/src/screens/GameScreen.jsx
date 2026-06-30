@@ -152,42 +152,39 @@ export default function GameScreen({ client, snap, notify, onExit }) {
   );
 }
 
-// Design-doc ship menu: drag a ship from here onto your waters. Placed ships are
-// checked off. Dragging a ship selects it so the board ghost previews it.
+// Design-doc ship menu: just the ship sprites (side view), draggable onto the
+// map. No labels. Dragging a sprite selects it so the board ghost previews it.
 function ShipMenu({ placed, onPick }) {
   return (
     <div style={shipMenuStyle}>
-      <div style={{ fontSize: 15, letterSpacing: 2, color: T.green, textShadow: T.glow, marginBottom: 2 }}>SHIP MENU</div>
-      {FLEET.map((kind) => {
-        const { label, length } = SHIP_KINDS[kind];
-        const done = placed.has(kind);
-        return (
-          <div
-            key={kind}
-            draggable={!done}
-            onDragStart={done ? undefined : (e) => { onPick(kind); e.dataTransfer.setData("text/plain", kind); e.dataTransfer.effectAllowed = "move"; }}
-            title={done ? `${label} placed` : `drag ${label} onto the board`}
-            style={{ ...shipItem, opacity: done ? 0.4 : 1, cursor: done ? "default" : "grab" }}
-          >
-            <ShipThumb kind={kind} />
-            <span style={{ fontSize: 14, flex: 1 }}>{done ? "✓ " : ""}{label}<br /><span style={{ fontSize: 11, color: T.greenDim }}>{length} cells</span></span>
-          </div>
-        );
-      })}
+      {FLEET.map((kind) => (
+        <ShipThumb
+          key={kind}
+          kind={kind}
+          done={placed.has(kind)}
+          onDragStart={(e) => { onPick(kind); e.dataTransfer.setData("text/plain", kind); e.dataTransfer.effectAllowed = "move"; }}
+        />
+      ))}
     </div>
   );
 }
 
-function ShipThumb({ kind }) {
+function ShipThumb({ kind, done, onDragStart }) {
   const [url, setUrl] = useState(null);
   useEffect(() => {
     let on = true;
     thumbnailFor(kind).then((u) => on && setUrl(u)).catch(() => {});
     return () => { on = false; };
   }, [kind]);
-  return url
-    ? <img src={url} alt="" draggable={false} style={{ width: 64, height: 46, objectFit: "contain" }} />
-    : <span style={{ width: 64, height: 46, display: "inline-block" }} />;
+  return (
+    <img
+      src={url || undefined}
+      alt=""
+      draggable
+      onDragStart={onDragStart}
+      style={{ width: "100%", height: 64, objectFit: "contain", opacity: done ? 0.4 : 1, cursor: "grab" }}
+    />
+  );
 }
 
 function Panel({ label, sub, divider, active, children }) {
@@ -214,8 +211,7 @@ const barStyle = {
 };
 const labelStyle = { position: "absolute", top: 12, left: 14, fontFamily: FONT, pointerEvents: "none", userSelect: "none" };
 const disabledStyle = { opacity: 0.35, cursor: "not-allowed", textShadow: "none", background: "transparent", color: T.green, boxShadow: "none" };
-const shipMenuStyle = { width: 230, display: "flex", flexDirection: "column", gap: 10, padding: 16, borderRight: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)", fontFamily: FONT, color: T.greenSoft, userSelect: "none" };
-const shipItem = { display: "flex", alignItems: "center", gap: 12, padding: "9px 10px", border: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.04)" };
+const shipMenuStyle = { width: 200, display: "flex", flexDirection: "column", justifyContent: "center", gap: 18, padding: 16, borderRight: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)", userSelect: "none" };
 const controlsCol = { width: 230, display: "flex", flexDirection: "column", gap: 12, padding: 16, borderLeft: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)", fontFamily: FONT, color: T.greenSoft };
 const sideTitle = { fontSize: 17, letterSpacing: 2, color: T.green, textShadow: T.glow };
 const readyBox = { marginTop: "auto", fontSize: 15, lineHeight: 1.9, paddingTop: 12, borderTop: `1px solid ${T.greenFaint}` };
