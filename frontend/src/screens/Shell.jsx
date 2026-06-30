@@ -55,7 +55,7 @@ export default function Shell({ client, user, notify, onLogout }) {
     <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column", fontFamily: FONT, color: T.greenSoft }}>
       {/* header */}
       <header style={headerBar}>
-        <span style={{ ...titleStyle, fontSize: 22 }}>battleship!</span>
+        <span style={{ ...titleStyle, fontSize: 30 }}>battleship!</span>
         <button
           onClick={() => incoming && setTab("matchmaking")}
           style={{ ...indicator, ...(incoming ? indicatorOn : null) }}>
@@ -108,7 +108,7 @@ function Tab({ on, onClick, disabled, children }) {
   return (
     <button onClick={onClick} disabled={disabled}
       style={{
-        flex: 1, padding: "10px 0", fontFamily: FONT, fontSize: 14, letterSpacing: 2, cursor: disabled ? "default" : "pointer",
+        flex: 1, padding: "16px 0", fontFamily: FONT, fontSize: 26, letterSpacing: 4, cursor: disabled ? "default" : "pointer",
         background: on ? "rgba(57,255,20,0.12)" : "transparent",
         color: on ? T.green : disabled ? "rgba(125,255,160,0.25)" : T.greenSoft,
         border: "none", borderBottom: on ? `2px solid ${T.green}` : "2px solid transparent",

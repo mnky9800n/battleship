@@ -38,36 +38,36 @@ export default function Matchmaking({ users, me, outgoing, onChallenge, onCancel
       {/* profile / challenge */}
       <div style={profileBox}>
         {!sel ? (
-          <div style={{ margin: "auto", color: T.greenDim, fontSize: 14 }}>select a player to challenge</div>
+          <div style={{ margin: "auto", color: T.greenDim, fontSize: 19 }}>select a player to challenge</div>
         ) : outgoing?.to === sel.username ? (
           <div style={{ margin: "auto", textAlign: "center" }}>
-            <div style={{ fontSize: 18, color: T.green, textShadow: T.glow }}>CHALLENGE SENT</div>
-            <div style={{ fontSize: 13, color: T.greenDim, margin: "8px 0 16px" }}>waiting for {sel.username} to respond…</div>
-            <button style={btnStyle} onClick={onCancel}>✕ CANCEL</button>
+            <div style={{ fontSize: 26, color: T.green, textShadow: T.glow }}>CHALLENGE SENT</div>
+            <div style={{ fontSize: 17, color: T.greenDim, margin: "10px 0 20px" }}>waiting for {sel.username} to respond…</div>
+            <button style={{ ...btnStyle, fontSize: 16 }} onClick={onCancel}>✕ CANCEL</button>
           </div>
         ) : (
           <>
             <div style={{ display: "flex", gap: 16, alignItems: "center", marginBottom: 18 }}>
               {avatarUrl(sel)
                 ? <img src={avatarUrl(sel)} alt="" style={avatarImg} />
-                : <div style={{ ...avatarImg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 26 }}>{sel.presence === "ai" ? "🤖" : "?"}</div>}
+                : <div style={{ ...avatarImg, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 48 }}>{sel.presence === "ai" ? "🤖" : "?"}</div>}
               <div>
-                <div style={{ fontSize: 22, color: T.green, textShadow: T.glow }}>{sel.username}</div>
-                <div style={{ fontSize: 13, color: DOT[sel.presence] }}>{sel.presence === "ai" ? "AI OPPONENT" : sel.presence.toUpperCase()}</div>
+                <div style={{ fontSize: 38, color: T.green, textShadow: T.glow }}>{sel.username}</div>
+                <div style={{ fontSize: 17, color: DOT[sel.presence] }}>{sel.presence === "ai" ? "AI OPPONENT" : sel.presence.toUpperCase()}</div>
               </div>
             </div>
-            <div style={{ display: "flex", gap: 24, fontSize: 16, marginBottom: 24 }}>
+            <div style={{ display: "flex", gap: 32, fontSize: 24, marginBottom: 30 }}>
               <span>Wins: <b style={{ color: T.green }}>{sel.wins}</b></span>
               <span>Losses: <b style={{ color: T.red }}>{sel.losses}</b></span>
             </div>
             <button
-              style={{ ...solidBtnStyle, fontSize: 16, padding: "12px 18px", opacity: challengeable ? 1 : 0.4, cursor: challengeable ? "pointer" : "not-allowed" }}
+              style={{ ...solidBtnStyle, fontSize: 22, padding: "16px 24px", opacity: challengeable ? 1 : 0.4, cursor: challengeable ? "pointer" : "not-allowed" }}
               disabled={!challengeable}
               onClick={() => onChallenge(sel.username)}>
               ⚔ CHALLENGE TO BATTLE!
             </button>
-            {isSelf && <div style={{ fontSize: 12, color: T.greenDim, marginTop: 8 }}>that's you</div>}
-            {sel.inGame && <div style={{ fontSize: 12, color: T.amber, marginTop: 8 }}>already in a game</div>}
+            {isSelf && <div style={{ fontSize: 15, color: T.greenDim, marginTop: 10 }}>that's you</div>}
+            {sel.inGame && <div style={{ fontSize: 15, color: T.amber, marginTop: 10 }}>already in a game</div>}
           </>
         )}
       </div>
@@ -75,9 +75,9 @@ export default function Matchmaking({ users, me, outgoing, onChallenge, onCancel
   );
 }
 
-const listBox = { width: 240, display: "flex", flexDirection: "column", border: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)" };
-const listHeader = { padding: "8px 12px", fontSize: 13, letterSpacing: 2, color: T.green, borderBottom: `1px solid ${T.greenFaint}` };
-const row = { display: "flex", alignItems: "center", gap: 10, width: "100%", padding: "9px 12px", background: "transparent", border: "none", borderBottom: `1px solid rgba(57,255,20,0.07)`, color: T.greenSoft, fontFamily: FONT, fontSize: 14, cursor: "pointer" };
+const listBox = { width: 300, display: "flex", flexDirection: "column", border: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)" };
+const listHeader = { padding: "10px 14px", fontSize: 18, letterSpacing: 2, color: T.green, borderBottom: `1px solid ${T.greenFaint}` };
+const row = { display: "flex", alignItems: "center", gap: 12, width: "100%", padding: "13px 14px", background: "transparent", border: "none", borderBottom: `1px solid rgba(57,255,20,0.07)`, color: T.greenSoft, fontFamily: FONT, fontSize: 19, cursor: "pointer" };
 const rowSel = { background: "rgba(57,255,20,0.12)", color: T.green };
-const profileBox = { flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: 28, border: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)" };
-const avatarImg = { width: 72, height: 72, objectFit: "cover", border: `1px solid ${T.greenDim}`, filter: "saturate(0.6) brightness(1.05)", background: "rgba(57,255,20,0.05)" };
+const profileBox = { flex: 1, display: "flex", flexDirection: "column", justifyContent: "center", padding: 36, border: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)" };
+const avatarImg = { width: 140, height: 140, objectFit: "cover", border: `1px solid ${T.greenDim}`, filter: "saturate(0.6) brightness(1.05)", background: "rgba(57,255,20,0.05)" };

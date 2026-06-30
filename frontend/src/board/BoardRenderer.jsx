@@ -14,7 +14,7 @@ const BOARD_PX_H = (gridWidth + gridHeight) * (tileHeight / 2);
 // mousemove handler that reports the hovered tile. Pointer coordinates are made
 // relative to this panel so several boards can coexist. Drag is distinguished
 // from click so a pan does not fire a shot.
-const ViewContainer = ({ onTileClick, onRotate }) => {
+const ViewContainer = ({ onTileClick, onRotate, onDropTile }) => {
   const containerRef = useRef(null);
   const {
     dimensions,
@@ -102,6 +102,21 @@ const ViewContainer = ({ onTileClick, onRotate }) => {
     onRotate();
   };
 
+  // Drag-and-drop ship placement: dragover previews the ghost at the hovered
+  // tile, drop places it there.
+  const handleDragOver = (e) => {
+    if (!onDropTile) return;
+    e.preventDefault();
+    setHoveredTile(tileFromEvent(e.clientX, e.clientY));
+  };
+
+  const handleDrop = (e) => {
+    if (!onDropTile) return;
+    e.preventDefault();
+    const tile = tileFromEvent(e.clientX, e.clientY);
+    if (tile) onDropTile(tile);
+  };
+
   return (
     <div
       ref={containerRef}
@@ -111,6 +126,8 @@ const ViewContainer = ({ onTileClick, onRotate }) => {
       onMouseLeave={handleMouseLeave}
       onClick={handleClick}
       onContextMenu={handleContextMenu}
+      onDragOver={handleDragOver}
+      onDrop={handleDrop}
       style={{
         position: "absolute",
         inset: 0,
@@ -126,7 +143,7 @@ const ViewContainer = ({ onTileClick, onRotate }) => {
 };
 
 // Measures its own panel so the board sizes to its container, not the window.
-const BoardRenderer = ({ view, onTileClick, onRotate, placement = null }) => {
+const BoardRenderer = ({ view, onTileClick, onRotate, onDropTile, placement = null }) => {
   const rootRef = useRef(null);
   const [dim, setDim] = useState({ width: 0, height: 0 });
 
@@ -149,7 +166,7 @@ const BoardRenderer = ({ view, onTileClick, onRotate, placement = null }) => {
     <div ref={rootRef} style={{ position: "relative", width: "100%", height: "100%", overflow: "hidden" }}>
       {dim.width > 0 && (
         <BoardProvider view={view} dimensions={dim} placement={placement} initialZoom={fit}>
-          <ViewContainer onTileClick={onTileClick} onRotate={onRotate} />
+          <ViewContainer onTileClick={onTileClick} onRotate={onRotate} onDropTile={onDropTile} />
         </BoardProvider>
       )}
     </div>

@@ -87,11 +87,9 @@ export default function GameScreen({ client, snap, notify, onExit }) {
         </div>
 
         {isSetup ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {FLEET.map((k) => (
-              <ShipChip key={k} kind={k} placed={placed.has(k)} selected={k === selectedKind} onClick={() => setSelectedKind(k)} />
-            ))}
-            <span style={{ fontSize: 14, color: T.greenDim, width: 72 }}>[{orientation === "h" ? "HORIZ" : "VERT"}]</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+            <span style={{ fontSize: 13, color: T.greenDim }}>drag ships onto your waters</span>
+            <button onClick={rotate} style={btnStyle}>⟳ ROTATE [{orientation === "h" ? "H" : "V"}]</button>
             <button onClick={() => client.clearPlacement()} style={btnStyle}>✕ CLEAR</button>
             <button onClick={() => client.ready()} disabled={!allPlaced} style={{ ...btnStyle, ...(allPlaced ? solidBtnStyle : disabledStyle) }}>▶ READY</button>
           </div>
@@ -110,33 +108,73 @@ export default function GameScreen({ client, snap, notify, onExit }) {
       </div>
 
       <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        <Panel label="YOUR WATERS" sub={isSetup ? "deploy fleet here" : "your fleet · incoming fire"} active={isSetup}>
-          <BoardRenderer view={snap.own} onTileClick={isSetup ? handlePlace : undefined} onRotate={isSetup ? rotate : undefined} placement={placement} />
+        <Panel label="YOUR WATERS" sub={isSetup ? "drag ships here" : "your fleet · incoming fire"} active={isSetup}>
+          <BoardRenderer
+            view={snap.own}
+            onTileClick={isSetup ? handlePlace : undefined}
+            onRotate={isSetup ? rotate : undefined}
+            onDropTile={isSetup ? handlePlace : undefined}
+            placement={placement}
+          />
+          {isSetup && <ShipMenu placed={placed} orientation={orientation} onPick={setSelectedKind} />}
         </Panel>
         <Panel label="ENEMY WATERS" sub={isSetup ? "locked until ready" : "your shots · click to fire"} divider active={yourTurn && isPlaying}>
           <BoardRenderer view={snap.enemy} onTileClick={isPlaying ? handleFire : undefined} />
           {isSetup && <div style={lockStyle}>◵ AWAITING DEPLOYMENT</div>}
         </Panel>
       </div>
+
+      {/* win/lose popup */}
+      {over && (
+        <div style={overWrap}>
+          <div style={{ ...overModal, borderColor: won ? T.green : T.red, boxShadow: `0 0 40px ${won ? "rgba(57,255,20,0.35)" : "rgba(255,90,90,0.35)"}` }}>
+            <div style={{ ...titleStyle, fontSize: 52, color: won ? T.green : T.red, textShadow: `0 0 16px ${won ? "rgba(57,255,20,0.6)" : "rgba(255,90,90,0.6)"}` }}>
+              {won ? "VICTORY" : "DEFEAT"}
+            </div>
+            <div style={{ fontSize: 16, color: T.greenDim, margin: "10px 0 24px" }}>
+              {won ? "enemy fleet destroyed" : "your fleet was lost"}
+            </div>
+            <button style={{ ...solidBtnStyle, fontSize: 16, padding: "12px 20px" }} onClick={onExit}>▶ RETURN TO LOBBY</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function ShipChip({ kind, placed, selected, onClick }) {
-  const { label, length } = SHIP_KINDS[kind];
+// Design-doc ship menu: drag a ship from here onto your waters. Placed ships are
+// checked off. Dragging a ship selects it so the board ghost previews it.
+function ShipMenu({ placed, onPick }) {
   return (
-    <button
-      onClick={onClick}
-      title={`${label} (${length})`}
-      style={{
-        cursor: "pointer", fontFamily: FONT, fontSize: 14, letterSpacing: 0.5, padding: "7px 10px",
-        color: selected ? T.bg : T.green, background: selected ? T.green : "transparent",
-        border: `1px solid ${selected ? T.green : T.greenDim}`, opacity: placed && !selected ? 0.55 : 1,
-        textShadow: selected ? "none" : T.glow,
-      }}
-    >
-      {placed ? "✓ " : ""}{label} {length}
-    </button>
+    <div style={shipMenuStyle}>
+      <div style={{ fontSize: 15, letterSpacing: 2, color: T.green, textShadow: T.glow, marginBottom: 2 }}>SHIP MENU</div>
+      {FLEET.map((kind) => {
+        const { label, length } = SHIP_KINDS[kind];
+        const done = placed.has(kind);
+        return (
+          <div
+            key={kind}
+            draggable={!done}
+            onDragStart={done ? undefined : (e) => { onPick(kind); e.dataTransfer.setData("text/plain", kind); e.dataTransfer.effectAllowed = "move"; }}
+            title={done ? `${label} placed` : `drag ${label} onto the board`}
+            style={{ ...shipItem, opacity: done ? 0.4 : 1, cursor: done ? "default" : "grab" }}
+          >
+            <ShipIcon length={length} />
+            <span style={{ fontSize: 14 }}>{done ? "✓ " : ""}{label} {length}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ShipIcon({ length }) {
+  return (
+    <span style={{ display: "inline-flex", gap: 2 }}>
+      {Array.from({ length }).map((_, i) => (
+        <span key={i} style={{ width: 13, height: 13, background: T.green, boxShadow: "0 0 4px rgba(57,255,20,0.6)" }} />
+      ))}
+    </span>
   );
 }
 
@@ -168,3 +206,7 @@ const lockStyle = {
   color: T.greenDim, fontFamily: FONT, fontSize: 13, letterSpacing: 3, pointerEvents: "none",
 };
 const disabledStyle = { opacity: 0.35, cursor: "not-allowed", textShadow: "none", background: "transparent", color: T.green, boxShadow: "none" };
+const shipMenuStyle = { position: "absolute", top: 56, left: 14, zIndex: 5, display: "flex", flexDirection: "column", gap: 8, padding: 14, background: "rgba(4,10,6,0.85)", border: `1px solid ${T.greenDim}`, fontFamily: FONT, color: T.greenSoft, userSelect: "none" };
+const shipItem = { display: "flex", alignItems: "center", gap: 12, padding: "7px 9px", border: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.04)" };
+const overWrap = { position: "absolute", inset: 0, background: "rgba(2,6,4,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70 };
+const overModal = { textAlign: "center", padding: "40px 56px", border: "2px solid", background: "#06120b" };
