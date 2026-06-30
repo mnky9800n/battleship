@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import BoardRenderer from "../board/BoardRenderer.jsx";
 import { SHIP_KINDS, FLEET, footprintCells, placementValid } from "../board/ships.js";
+import ShipSprite from "../board/ShipSprite.jsx";
 import { T, FONT, titleStyle, btnStyle, solidBtnStyle } from "../theme.js";
 
 // The two-board game: SETUP (place your fleet) then PLAY (fire). Driven by the
@@ -87,14 +88,7 @@ export default function GameScreen({ client, snap, notify, onExit }) {
         </div>
 
         {isSetup ? (
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {FLEET.map((k) => (
-              <ShipChip key={k} kind={k} placed={placed.has(k)} selected={k === selectedKind} onClick={() => setSelectedKind(k)} />
-            ))}
-            <span style={{ fontSize: 14, color: T.greenDim, width: 72 }}>[{orientation === "h" ? "HORIZ" : "VERT"}]</span>
-            <button onClick={() => client.clearPlacement()} style={btnStyle}>✕ CLEAR</button>
-            <button onClick={() => client.ready()} disabled={!allPlaced} style={{ ...btnStyle, ...(allPlaced ? solidBtnStyle : disabledStyle) }}>▶ READY</button>
-          </div>
+          <span style={{ fontSize: 14, color: T.greenDim }}>// deploy your fleet — drag ships from the menu onto the map</span>
         ) : (
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             <span style={{ fontSize: 17, color: statusColor, textShadow: T.glow }}>
@@ -109,34 +103,71 @@ export default function GameScreen({ client, snap, notify, onExit }) {
         )}
       </div>
 
-      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
-        <Panel label="YOUR WATERS" sub={isSetup ? "deploy fleet here" : "your fleet · incoming fire"} active={isSetup}>
-          <BoardRenderer view={snap.own} onTileClick={isSetup ? handlePlace : undefined} onRotate={isSetup ? rotate : undefined} placement={placement} />
-        </Panel>
-        <Panel label="ENEMY WATERS" sub={isSetup ? "locked until ready" : "your shots · click to fire"} divider active={yourTurn && isPlaying}>
-          <BoardRenderer view={snap.enemy} onTileClick={isPlaying ? handleFire : undefined} />
-          {isSetup && <div style={lockStyle}>◵ AWAITING DEPLOYMENT</div>}
-        </Panel>
-      </div>
+      {isSetup ? (
+        // SETUP: ship menu (left) · single map (center) · controls (right).
+        // Keyed so React fully remounts on the setup<->play switch instead of
+        // reusing a board (which would carry the wrong zoom across the change).
+        <div key="setup" style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          <ShipMenu placed={placed} onPick={setSelectedKind} />
+          <Panel label="YOUR WATERS" sub="drag ships onto the map" active>
+            <BoardRenderer view={snap.own} onTileClick={handlePlace} onRotate={rotate} onDropTile={handlePlace} placement={placement} />
+          </Panel>
+          <div style={controlsCol}>
+            <div style={sideTitle}>DEPLOYMENT</div>
+            <div style={{ fontSize: 15 }}>{remaining.length} ship{remaining.length !== 1 ? "s" : ""} left to place</div>
+            <button onClick={rotate} style={btnStyle}>⟳ ROTATE [{orientation === "h" ? "HORIZ" : "VERT"}]</button>
+            <button onClick={() => client.clearPlacement()} style={btnStyle}>✕ CLEAR</button>
+            <button onClick={() => client.ready()} disabled={!allPlaced} style={{ ...btnStyle, ...(allPlaced ? solidBtnStyle : disabledStyle), fontSize: 16, padding: "12px 16px" }}>▶ READY</button>
+            <div style={readyBox}>
+              <div>you: <b style={{ color: snap.youReady ? T.green : T.amber }}>{snap.youReady ? "READY" : "placing…"}</b></div>
+              <div>enemy: <b style={{ color: snap.enemyReady ? T.green : T.amber }}>{snap.enemyReady ? "READY" : "placing…"}</b></div>
+            </div>
+          </div>
+        </div>
+      ) : (
+        // PLAY: two boards side by side.
+        <div key="play" style={{ flex: 1, display: "flex", minHeight: 0 }}>
+          <Panel label="YOUR WATERS" sub="your fleet · incoming fire">
+            <BoardRenderer key="own" view={snap.own} />
+          </Panel>
+          <Panel label="ENEMY WATERS" sub="your shots · click to fire" divider active={yourTurn && isPlaying}>
+            <BoardRenderer key="enemy" view={snap.enemy} onTileClick={isPlaying ? handleFire : undefined} />
+          </Panel>
+        </div>
+      )}
+
+      {/* win/lose popup */}
+      {over && (
+        <div style={overWrap}>
+          <div style={{ ...overModal, borderColor: won ? T.green : T.red, boxShadow: `0 0 40px ${won ? "rgba(57,255,20,0.35)" : "rgba(255,90,90,0.35)"}` }}>
+            <div style={{ ...titleStyle, fontSize: 52, color: won ? T.green : T.red, textShadow: `0 0 16px ${won ? "rgba(57,255,20,0.6)" : "rgba(255,90,90,0.6)"}` }}>
+              {won ? "VICTORY" : "DEFEAT"}
+            </div>
+            <div style={{ fontSize: 16, color: T.greenDim, margin: "10px 0 24px" }}>
+              {won ? "enemy fleet destroyed" : "your fleet was lost"}
+            </div>
+            <button style={{ ...solidBtnStyle, fontSize: 16, padding: "12px 20px" }} onClick={onExit}>▶ RETURN TO LOBBY</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function ShipChip({ kind, placed, selected, onClick }) {
-  const { label, length } = SHIP_KINDS[kind];
+// Design-doc ship menu: just the ship sprites (side view), draggable onto the
+// map. No labels. Dragging a sprite selects it so the board ghost previews it.
+function ShipMenu({ placed, onPick }) {
   return (
-    <button
-      onClick={onClick}
-      title={`${label} (${length})`}
-      style={{
-        cursor: "pointer", fontFamily: FONT, fontSize: 14, letterSpacing: 0.5, padding: "7px 10px",
-        color: selected ? T.bg : T.green, background: selected ? T.green : "transparent",
-        border: `1px solid ${selected ? T.green : T.greenDim}`, opacity: placed && !selected ? 0.55 : 1,
-        textShadow: selected ? "none" : T.glow,
-      }}
-    >
-      {placed ? "✓ " : ""}{label} {length}
-    </button>
+    <div style={shipMenuStyle}>
+      {FLEET.map((kind) => (
+        <ShipSprite
+          key={kind}
+          kind={kind}
+          done={placed.has(kind)}
+          onDragStart={(e) => { onPick(kind); e.dataTransfer.setData("text/plain", kind); e.dataTransfer.effectAllowed = "move"; }}
+        />
+      ))}
+    </div>
   );
 }
 
@@ -163,8 +194,10 @@ const barStyle = {
   borderBottom: `1px solid ${T.greenFaint}`, userSelect: "none",
 };
 const labelStyle = { position: "absolute", top: 12, left: 14, fontFamily: FONT, pointerEvents: "none", userSelect: "none" };
-const lockStyle = {
-  position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center",
-  color: T.greenDim, fontFamily: FONT, fontSize: 13, letterSpacing: 3, pointerEvents: "none",
-};
 const disabledStyle = { opacity: 0.35, cursor: "not-allowed", textShadow: "none", background: "transparent", color: T.green, boxShadow: "none" };
+const shipMenuStyle = { width: 200, display: "flex", flexDirection: "column", justifyContent: "center", gap: 18, padding: 16, borderRight: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)", userSelect: "none" };
+const controlsCol = { width: 230, display: "flex", flexDirection: "column", gap: 12, padding: 16, borderLeft: `1px solid ${T.greenFaint}`, background: "rgba(57,255,20,0.03)", fontFamily: FONT, color: T.greenSoft };
+const sideTitle = { fontSize: 17, letterSpacing: 2, color: T.green, textShadow: T.glow };
+const readyBox = { marginTop: "auto", fontSize: 15, lineHeight: 1.9, paddingTop: 12, borderTop: `1px solid ${T.greenFaint}` };
+const overWrap = { position: "absolute", inset: 0, background: "rgba(2,6,4,0.8)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 70 };
+const overModal = { textAlign: "center", padding: "40px 56px", border: "2px solid", background: "#06120b" };

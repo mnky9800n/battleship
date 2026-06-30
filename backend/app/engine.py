@@ -290,6 +290,8 @@ class Game:
             "status": self.status,
             "whoseTurn": whose,
             "winner": winner,
+            "youReady": viewer in self.ready,
+            "enemyReady": self.opponent(viewer) in self.ready,
             "lastShot": dict(self.last_shot) if self.last_shot else None,
             "own": self.view_for(viewer, "own"),
             "enemy": self.view_for(viewer, "enemy"),

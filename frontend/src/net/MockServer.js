@@ -84,23 +84,36 @@ export default class MockServer {
 
   // Minimal "login": the trial's security is intentionally trivial.
   login(username) {
+    this.username = username;
     return Promise.resolve({ username, token: `mock-${username}`, avatar: null });
   }
 
-  // Offline parity with SocketTransport. Offline mode is practice-vs-AI only.
+  // Offline parity with SocketTransport. Offline mode is practice-vs-AI only:
+  // the lobby shows just you and the AI, and challenging the AI plays it.
   signup(username) {
+    this.username = username;
     return Promise.resolve({ username, token: `mock-${username}`, avatar: null });
   }
 
-  createGame() {
-    this.startVsAI(); // offline: any "create" is a vs-AI practice game
+  refreshLobby() {
+    setTimeout(() => {
+      this.emit("lobby_update", {
+        users: [
+          { username: this.username || "player", presence: "online", wins: 0, losses: 0, avatar: null, inGame: false },
+          { username: "playerAI", presence: "ai", wins: 0, losses: 0, avatar: null, inGame: false },
+        ],
+      });
+    }, 0);
   }
 
-  joinGame() {
-    this.emit("error", { message: "joining is online-only — start the server for multiplayer" });
+  challenge() {
+    this.startVsAI(); // offline: any challenge is a vs-AI practice game
   }
 
+  respondChallenge() {}
+  cancelChallenge() {}
   leave() {}
+  logout() {}
 
   // Start a vs-AI game in the SETUP phase. The AI places randomly now (hidden);
   // the human places their fleet via placeShip, then ready() begins play.
@@ -337,6 +350,8 @@ export default class MockServer {
       status: g.status,
       whoseTurn: g.turn,
       winner: g.winner,
+      youReady: g.status !== "setup",
+      enemyReady: true, // the AI is always ready in offline practice
       lastShot: last || null,
       own: this.viewFor("own"),
       enemy: this.viewFor("enemy"),
