@@ -15,8 +15,8 @@ https://medium.com/@nbazer00/how-i-built-battleship-from-scratch-in-javascript-3
 - ship size 3: Submarine by Poly by Google [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/8PgPdFGg3MO
 - ship size 5: low poly battleship by angelo raffaele Catalano [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/cqV6mUkn7Ow)
 - ship size 4: Container Ship by Alex Safayan [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/3AmDGcCu6Ll)
-- ship size 2: Cruise Ship by Quaternius (https://poly.pizza/m/yq9EKmEmfC)
-- ship size 1: Boat by Poly by Google [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/84-DYhLzxNq)
+- ship size 3: Cruise Ship by Quaternius (https://poly.pizza/m/yq9EKmEmfC)
+- ship size 2: Boat by Poly by Google [CC-BY] (https://creativecommons.org/licenses/by/3.0/) via Poly Pizza (https://poly.pizza/m/84-DYhLzxNq)
 
 # avatars (player headshots)
 auto-assigned to each new account on creation. headshots of characters from the movie Hackers (1995). source images + license TBD, fill in per file before shipping. suggested location: assets/avatars/
