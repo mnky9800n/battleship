@@ -28,6 +28,11 @@ const SHIP_FILL = 0.9;
 // ship floats on the surface instead of being centered (half-submerged) on it.
 const SHIP_RAISE = 0.5;
 
+// Per-cell hit damage marker (a red glow on the hit section of a hull), in tile
+// units. A ship turns wholly red only once every section is hit (sunk).
+const MARK_RADIUS = 0.3;
+const MARK_RAISE = 0.55;
+
 const MODEL_URL = (kind) => `${process.env.PUBLIC_URL}/assets/ships/${kind}.glb`;
 
 // Cache loaded GLTF scenes per kind so each model file is fetched once.
@@ -85,7 +90,7 @@ const ShipLayer = () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
     container.appendChild(renderer.domElement);
 
-    const state = { scene, camera, renderer, ships: [] };
+    const state = { scene, camera, renderer, ships: [], marks: [] };
     threeRef.current = state;
 
     let rafId;
@@ -131,6 +136,22 @@ const ShipLayer = () => {
         );
         group.matrixWorldNeedsUpdate = true; // matrixAutoUpdate is off
       }
+
+      // Per-cell damage markers, projected the same way and nudged forward in
+      // depth (+1) so they sit on top of the hull.
+      for (const mark of state.marks) {
+        const { screenX, screenY } = toScreenCoords(mark.cell.x, mark.cell.y, z, offsetX, offsetY);
+        const camX = screenX - halfW;
+        const camY = halfH - (screenY + sy + surfaceY);
+        const camZ = (mark.cell.x + mark.cell.y) * sy + 1;
+        mark.group.matrix.set(
+          sx, 0, -sx, camX,
+          -sy, lift, -sy, camY,
+          sy, lift, sy, camZ,
+          0, 0, 0, 1
+        );
+        mark.group.matrixWorldNeedsUpdate = true;
+      }
       renderer.render(scene, camera);
     };
     rafId = requestAnimationFrame(tick);
@@ -151,9 +172,35 @@ const ShipLayer = () => {
     if (!state) return;
     let cancelled = false;
 
-    // Clear existing.
+    // Clear existing ships and damage markers.
     for (const entry of state.ships) state.scene.remove(entry.group);
+    for (const mark of state.marks) state.scene.remove(mark.group);
     state.ships = [];
+    state.marks = [];
+
+    // Cells that have taken a hit (incoming on your board, outgoing on enemy).
+    const hitCells = new Set();
+    for (const s of [...(view?.incoming ?? []), ...(view?.outgoing ?? [])]) {
+      if (s.result === "hit") hitCells.add(`${s.x},${s.y}`);
+    }
+    // A red glow marks each hit section of a still-floating ship. Sunk ships are
+    // wholly red, so they need no per-cell markers.
+    for (const ship of view?.ships ?? []) {
+      if (ship.sunk) continue;
+      for (const cell of ship.cells) {
+        if (!hitCells.has(`${cell.x},${cell.y}`)) continue;
+        const mesh = new THREE.Mesh(
+          new THREE.SphereGeometry(MARK_RADIUS, 16, 12),
+          new THREE.MeshBasicMaterial({ color: 0xff2b2b })
+        );
+        mesh.position.y = MARK_RAISE;
+        const g = new THREE.Group();
+        g.matrixAutoUpdate = false;
+        g.add(mesh);
+        state.scene.add(g);
+        state.marks.push({ group: g, cell });
+      }
+    }
 
     const ships = view?.ships ?? [];
     for (const ship of ships) {
