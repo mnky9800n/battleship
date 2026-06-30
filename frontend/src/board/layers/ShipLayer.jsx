@@ -11,11 +11,22 @@ import { SHIP_KINDS } from "../ships.js";
 // canvas with an orthographic camera whose frustum is the screen in pixels, so a
 // model placed at a tile's screen coordinate lines up with the 2D board beneath.
 //
-// Tuning constants (expected to be adjusted by eye once running):
-const ISO_TILT = Math.PI * 0.30; // tilt the deck toward the camera for an iso feel
-const HEADING_H = 0;             // yaw for a horizontal (along grid-x) ship
-const HEADING_V = Math.PI / 2;   // yaw for a vertical (along grid-y) ship
-const SHIP_FILL = 0.78;          // fraction of the ship's cell-run the model spans
+// The board is isometric, so its grid axes run along the screen diagonals at
+// ISO = atan(tileHeight/tileWidth) (~26.57deg for a 2:1 diamond), NOT along the
+// screen horizontal/vertical. Ships are rendered deck-up (top-down) and rolled
+// about the view axis so the hull lies along the correct grid diagonal: a
+// horizontal ship (along grid-x) points down-right, a vertical ship down-left.
+const ISO = Math.atan(tileHeight / tileWidth);
+const ROLL_H = -ISO; // horizontal ship (along grid +x) -> down-right
+const ROLL_V = ISO;  // vertical ship (along grid +y)   -> down-left
+
+// On-screen length of one cell step along an iso axis, in unzoomed px.
+const CELL_DIAG = Math.hypot(tileWidth / 2, tileHeight / 2);
+// A ship spans its length in cells; SHIP_FILL leaves a small margin within them.
+const SHIP_FILL = 0.9;
+
+// Flip if a model loads showing its hull instead of its deck.
+const DECK_SIGN = 1;
 
 const MODEL_URL = (kind) => `${process.env.PUBLIC_URL}/assets/ships/${kind}.glb`;
 
@@ -97,7 +108,7 @@ const ShipLayer = () => {
 
       const surfaceY = -0.35 * elevationScale * z;
       for (const entry of state.ships) {
-        const { group, ship, modelMaxDim } = entry;
+        const { group, ship, modelLength } = entry;
         const center = shipCenterTile(ship.cells);
         const { screenX, screenY } = toScreenCoords(center.x, center.y, z, offsetX, offsetY);
         // Screen pixels -> camera space (y flips: screen-down is world-up).
@@ -105,12 +116,15 @@ const ShipLayer = () => {
         const camY = halfH - (screenY + tileHeight * z * 0.5 + surfaceY);
         group.position.set(camX, camY, 0);
 
+        // Scale the model's long axis to span exactly N cells along the diagonal.
         const cellRun = SHIP_KINDS[ship.kind].length;
-        const targetPx = cellRun * tileWidth * 0.5 * SHIP_FILL;
-        const scale = (targetPx / modelMaxDim) * z;
-        group.scale.setScalar(scale);
+        const targetPx = cellRun * CELL_DIAG * SHIP_FILL;
+        group.scale.setScalar((targetPx / modelLength) * z);
 
-        group.rotation.set(ISO_TILT, ship.orientation === "v" ? HEADING_V : HEADING_H, 0);
+        // Roll about the view axis (Z) to lie along the grid diagonal. The deck
+        // is already turned to face the camera by the model's own rotation, set
+        // once at load, so this roll spins the top-down silhouette in-plane.
+        group.rotation.set(0, 0, ship.orientation === "v" ? ROLL_V : ROLL_H);
       }
       renderer.render(scene, camera);
     };
@@ -157,20 +171,28 @@ const ShipLayer = () => {
           });
         }
 
-        // Recenter geometry on the model's bounding-box center, and measure its
-        // largest horizontal dimension for normalization.
+        // Measure the model in its native orientation: its longest horizontal
+        // axis is the hull length, which we align to world-X.
         const box = new THREE.Box3().setFromObject(model);
         const center = new THREE.Vector3();
         const size = new THREE.Vector3();
         box.getCenter(center);
         box.getSize(size);
-        model.position.sub(center);
-        const modelMaxDim = Math.max(size.x, size.z) || 1;
+        model.position.sub(center); // center at origin so rotations keep it centered
+        const lengthAlongZ = size.z > size.x;
+        const modelLength = Math.max(size.x, size.z) || 1;
+
+        // Orient once: turn the deck (+Y) to face the camera (+Z) and bring the
+        // hull length onto world-X. The in-plane roll to the grid diagonal is
+        // applied per-frame on the parent group.
+        model.rotation.order = "YXZ";
+        model.rotation.y = lengthAlongZ ? Math.PI / 2 : 0; // swap Z-length onto X
+        model.rotation.x = DECK_SIGN * (Math.PI / 2); // deck up -> toward camera
 
         const group = new THREE.Group();
         group.add(model);
         state.scene.add(group);
-        state.ships.push({ group, ship, modelMaxDim });
+        state.ships.push({ group, ship, modelLength });
       }).catch((err) => console.warn(`failed to load ship model ${ship.kind}`, err));
     }
 
