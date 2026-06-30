@@ -45,17 +45,26 @@ const GridLayer = () => {
       ctx.stroke();
     }
 
-    // Incoming enemy hits on your board (orange bursts).
-    for (const hit of view?.ownHits ?? []) {
-      const { cx, cy } = tileCenter(hit.x, hit.y, zoom, offsetX, offsetY);
-      ctx.fillStyle = "rgba(255, 140, 40, 0.9)";
-      ctx.beginPath();
-      ctx.arc(cx, cy, 5 * zoom, 0, Math.PI * 2);
-      ctx.fill();
+    // Incoming shots landing on THIS board (enemy fire on your waters):
+    // orange burst for a hit on your hull, white splash ring for a miss.
+    for (const shot of view?.incoming ?? []) {
+      const { cx, cy } = tileCenter(shot.x, shot.y, zoom, offsetX, offsetY);
+      if (shot.result === "hit") {
+        ctx.fillStyle = "rgba(255, 120, 30, 0.92)";
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5 * zoom, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        ctx.strokeStyle = "rgba(200, 225, 240, 0.7)";
+        ctx.lineWidth = 1.25 * zoom;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 4.5 * zoom, 0, Math.PI * 2);
+        ctx.stroke();
+      }
     }
 
-    // Your shots on the enemy (red X for hit, white ring for miss).
-    for (const shot of view?.shots ?? []) {
+    // Your outgoing shots on this board (red X for hit, white ring for miss).
+    for (const shot of view?.outgoing ?? []) {
       const { cx, cy } = tileCenter(shot.x, shot.y, zoom, offsetX, offsetY);
       const r = 6 * zoom;
       if (shot.result === "hit") {

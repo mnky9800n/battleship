@@ -5,7 +5,7 @@ import { useBoardContext } from "../BoardContext.jsx";
 import { getOffsets } from "../isometric.js";
 import { toScreenCoords } from "../rendering.js";
 import { tileWidth, tileHeight, elevationScale } from "../constants.js";
-import { SHIP_KINDS } from "../../mockView.js";
+import { SHIP_KINDS } from "../ships.js";
 
 // 3D ship overlay. Forked from rainy-city's WhaleLayer: a transparent WebGL
 // canvas with an orthographic camera whose frustum is the screen in pixels, so a
@@ -136,11 +136,26 @@ const ShipLayer = () => {
     for (const entry of state.ships) state.scene.remove(entry.group);
     state.ships = [];
 
-    const ships = view?.ownShips ?? [];
+    const ships = view?.ships ?? [];
     for (const ship of ships) {
       loadModel(ship.kind).then((sceneModel) => {
         if (cancelled || !threeRef.current) return;
         const model = sceneModel.clone(true);
+
+        // Sunk ships are recolored red (design doc), tinting each material.
+        if (ship.sunk) {
+          model.traverse((child) => {
+            if (child.material) {
+              const mats = Array.isArray(child.material) ? child.material : [child.material];
+              child.material = mats.map((m) => {
+                const tinted = m.clone();
+                if (tinted.color) tinted.color.setHex(0xc0392b);
+                return tinted;
+              });
+              if (!Array.isArray(child.material)) child.material = child.material[0];
+            }
+          });
+        }
 
         // Recenter geometry on the model's bounding-box center, and measure its
         // largest horizontal dimension for normalization.
