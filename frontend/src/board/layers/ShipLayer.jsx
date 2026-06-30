@@ -11,22 +11,19 @@ import { SHIP_KINDS } from "../ships.js";
 // canvas with an orthographic camera whose frustum is the screen in pixels, so a
 // model placed at a tile's screen coordinate lines up with the 2D board beneath.
 //
-// The board is isometric, so its grid axes run along the screen diagonals at
-// ISO = atan(tileHeight/tileWidth) (~26.57deg for a 2:1 diamond), NOT along the
-// screen horizontal/vertical. Ships are rendered deck-up (top-down) and rolled
-// about the view axis so the hull lies along the correct grid diagonal: a
-// horizontal ship (along grid-x) points down-right, a vertical ship down-left.
-const ISO = Math.atan(tileHeight / tileWidth);
-const ROLL_H = -ISO; // horizontal ship (along grid +x) -> down-right
-const ROLL_V = ISO;  // vertical ship (along grid +y)   -> down-left
+// Rather than rotate models into an isometric pose (which stands them on end
+// unless the model's up-axis is known), we project level (up = +Y) models
+// through the SAME isometric transform the 2D board uses. Ships then lie flat on
+// the water by construction and share the grid's exact geometry.
+//
+// In tile units, the projection sends each basis vector to camera pixels (x
+// right, y up): grid +x -> down-right, grid +y -> down-left, height +Y -> up.
+const TILE_DX = tileWidth / 2;  // unzoomed; horizontal px of one grid-step
+const TILE_DY = tileHeight / 2; // unzoomed; vertical px of one grid-step
+const LIFT = elevationScale;    // unzoomed; pixels per unit of model height
 
-// On-screen length of one cell step along an iso axis, in unzoomed px.
-const CELL_DIAG = Math.hypot(tileWidth / 2, tileHeight / 2);
 // A ship spans its length in cells; SHIP_FILL leaves a small margin within them.
 const SHIP_FILL = 0.9;
-
-// Flip if a model loads showing its hull instead of its deck.
-const DECK_SIGN = 1;
 
 const MODEL_URL = (kind) => `${process.env.PUBLIC_URL}/assets/ships/${kind}.glb`;
 
@@ -106,25 +103,30 @@ const ShipLayer = () => {
         renderer.setSize(dim.width, dim.height);
       }
 
+      const sx = TILE_DX * z;
+      const sy = TILE_DY * z;
+      const lift = LIFT * z;
       const surfaceY = -0.35 * elevationScale * z;
       for (const entry of state.ships) {
-        const { group, ship, modelLength } = entry;
-        const center = shipCenterTile(ship.cells);
+        const { group } = entry;
+        const center = shipCenterTile(entry.ship.cells);
         const { screenX, screenY } = toScreenCoords(center.x, center.y, z, offsetX, offsetY);
-        // Screen pixels -> camera space (y flips: screen-down is world-up).
+        // Tile center on the water surface, in camera pixels (x right, y up).
         const camX = screenX - halfW;
-        const camY = halfH - (screenY + tileHeight * z * 0.5 + surfaceY);
-        group.position.set(camX, camY, 0);
+        const camY = halfH - (screenY + sy + surfaceY);
+        const camZ = (center.x + center.y) * sy;
 
-        // Scale the model's long axis to span exactly N cells along the diagonal.
-        const cellRun = SHIP_KINDS[ship.kind].length;
-        const targetPx = cellRun * CELL_DIAG * SHIP_FILL;
-        group.scale.setScalar((targetPx / modelLength) * z);
-
-        // Roll about the view axis (Z) to lie along the grid diagonal. The deck
-        // is already turned to face the camera by the model's own rotation, set
-        // once at load, so this roll spins the top-down silhouette in-plane.
-        group.rotation.set(0, 0, ship.orientation === "v" ? ROLL_V : ROLL_H);
+        // Isometric projection matrix (tile units -> camera pixels). Columns are
+        // the images of grid +x, model height +Y, and grid +y; the 4th column is
+        // the ship's tile-center translation. Children carry centering + scale +
+        // orientation, so this matrix only projects and places.
+        group.matrix.set(
+          sx, 0, -sx, camX,
+          -sy, lift, -sy, camY,
+          sy, lift, sy, camZ,
+          0, 0, 0, 1
+        );
+        group.matrixWorldNeedsUpdate = true; // matrixAutoUpdate is off
       }
       renderer.render(scene, camera);
     };
@@ -171,28 +173,35 @@ const ShipLayer = () => {
           });
         }
 
-        // Measure the model in its native orientation: its longest horizontal
-        // axis is the hull length, which we align to world-X.
+        // Measure the model (level, up = +Y). Its longer horizontal axis is the
+        // hull length; recenter so transforms pivot on the ship's middle.
         const box = new THREE.Box3().setFromObject(model);
         const center = new THREE.Vector3();
         const size = new THREE.Vector3();
         box.getCenter(center);
         box.getSize(size);
-        model.position.sub(center); // center at origin so rotations keep it centered
+        model.position.sub(center);
         const lengthAlongZ = size.z > size.x;
         const modelLength = Math.max(size.x, size.z) || 1;
 
-        // Orient once: turn the deck (+Y) to face the camera (+Z) and bring the
-        // hull length onto world-X. The in-plane roll to the grid diagonal is
-        // applied per-frame on the parent group.
-        model.rotation.order = "YXZ";
-        model.rotation.y = lengthAlongZ ? Math.PI / 2 : 0; // swap Z-length onto X
-        model.rotation.x = DECK_SIGN * (Math.PI / 2); // deck up -> toward camera
+        // Pivot bakes scale + axis choice; the outer group carries the iso matrix.
+        // Scale so the hull spans its length in cells (tile units). Align the hull
+        // to grid +x for horizontal ships, grid +z for vertical ones; the model
+        // stays level (up = +Y) so it lies flat once projected.
+        const cells = SHIP_KINDS[ship.kind].length * SHIP_FILL;
+        const lengthAxis = lengthAlongZ ? "z" : "x";
+        const targetAxis = ship.orientation === "v" ? "z" : "x";
+
+        const pivot = new THREE.Group();
+        pivot.add(model);
+        pivot.scale.setScalar(cells / modelLength);
+        if (lengthAxis !== targetAxis) pivot.rotation.y = Math.PI / 2; // swap x<->z
 
         const group = new THREE.Group();
-        group.add(model);
+        group.matrixAutoUpdate = false; // we set group.matrix to the iso projection
+        group.add(pivot);
         state.scene.add(group);
-        state.ships.push({ group, ship, modelLength });
+        state.ships.push({ group, ship });
       }).catch((err) => console.warn(`failed to load ship model ${ship.kind}`, err));
     }
 
