@@ -50,24 +50,40 @@ export default class SocketTransport {
     if (this.socket) this.socket.disconnect();
     this.socket = io(this.apiUrl, { auth: { token }, transports: ["websocket", "polling"] });
     // Forward server pushes onto the local bus the UI listens to.
-    this.socket.on("state", (s) => this.emit("state", s));
-    this.socket.on("error", (e) => this.emit("error", e));
-    this.socket.on("game_created", (d) => this.emit("game_created", d));
+    const fwd = [
+      "state", "error",
+      "challenge_received", "challenge_sent", "challenge_declined",
+      "challenge_expired", "challenge_cancelled",
+    ];
+    fwd.forEach((ev) => this.socket.on(ev, (d) => this.emit(ev, d)));
+    // Cache the lobby so a late subscriber (Shell mounting after connect) can
+    // get the current list via refreshLobby().
+    this.socket.on("lobby_update", (d) => { this.lastLobby = d; this.emit("lobby_update", d); });
     this.socket.on("connect_error", (e) => this.emit("error", { message: e.message || "connection error" }));
   }
 
   // --- lobby + game actions (identity is the socket's bound user) ---
 
-  createGame(opts = {}) {
-    this.socket?.emit("create_game", opts);
+  // Re-emit the cached lobby for a late subscriber; the server also pushes it on
+  // connect and on every change.
+  refreshLobby() {
+    if (this.lastLobby) this.emit("lobby_update", this.lastLobby);
   }
 
-  joinGame(code) {
-    this.socket?.emit("join_game", { code });
+  challenge(target) {
+    this.socket?.emit("challenge", { target });
+  }
+
+  respondChallenge(accept) {
+    this.socket?.emit("challenge_response", { accept });
+  }
+
+  cancelChallenge() {
+    this.socket?.emit("cancel_challenge");
   }
 
   startVsAI() {
-    this.createGame({ vsAI: true });
+    this.challenge("playerAI"); // challenging the AI starts a vs-AI game instantly
   }
 
   placeShip(kind, cells) {
@@ -88,5 +104,11 @@ export default class SocketTransport {
 
   leave() {
     this.socket?.emit("leave");
+  }
+
+  logout() {
+    this.socket?.disconnect();
+    this.socket = null;
+    this.user = null;
   }
 }

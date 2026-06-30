@@ -30,16 +30,28 @@ export default class GameClient {
     return this.transport.login(username, password);
   }
 
-  createGame(opts) {
-    return this.transport.createGame(opts || {});
+  refreshLobby() {
+    this.transport.refreshLobby?.();
   }
 
-  joinGame(code) {
-    return this.transport.joinGame(code);
+  challenge(target) {
+    this.transport.challenge(target);
+  }
+
+  respondChallenge(accept) {
+    this.transport.respondChallenge(accept);
+  }
+
+  cancelChallenge() {
+    this.transport.cancelChallenge?.();
   }
 
   startVsAI() {
     return this.transport.startVsAI();
+  }
+
+  logout() {
+    this.transport.logout?.();
   }
 
   placeShip(kind, cells) {

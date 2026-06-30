@@ -100,6 +100,13 @@ def record_result(winner: str, loser: str) -> None:
         conn.commit()
 
 
+def all_users() -> list[dict]:
+    """Every registered account (incl. the AI), for the matchmaking list."""
+    conn = connect()
+    cur = conn.execute("SELECT username, avatar, wins, losses FROM users")
+    return [dict(r) for r in cur.fetchall()]
+
+
 def leaderboard() -> list[dict]:
     conn = connect()
     cur = conn.execute(

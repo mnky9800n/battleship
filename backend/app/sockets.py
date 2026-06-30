@@ -1,16 +1,17 @@
-"""Socket.IO layer: the multi-game registry and real-time game traffic.
+"""Socket.IO layer: lobby presence, the challenge flow, and game traffic.
 
 Holds many concurrent 2-player games at once, each isolated in its own room.
-Player identity is bound to the socket on connect (never read from message
-payloads), which is what makes the redaction in engine.py an actual trust
-boundary: a client only ever receives its own redacted snapshot.
+Player identity is bound to the socket on connect (never read from payloads),
+which makes the redaction in engine.py a real trust boundary.
+
+Matchmaking follows the design doc: everyone sees the list of registered users
+with presence; you challenge an online user (or the AI); they accept and a game
+is created. There is no join-by-code.
 """
 
 from __future__ import annotations
 
 import asyncio
-import random
-import string
 import uuid
 
 from . import auth, db
@@ -18,23 +19,17 @@ from .engine import Game, GameError, random_fleet
 
 BOT = db.BOT_USERNAME
 GRACE_SECONDS = 60
+CHALLENGE_SECONDS = 60
 BOT_DELAY = 0.45
+LOBBY = "lobby"
 
 # --- in-memory registry (many pairs at once) ---
 games: dict[str, Game] = {}            # game_id -> Game
-pending: dict[str, str] = {}           # join code -> creator username (awaiting opponent)
-pending_user: dict[str, str] = {}      # creator username -> their pending code
 user_game: dict[str, str] = {}         # username -> active game_id (one game per user)
 sid_user: dict[str, str] = {}          # socket id -> username
 user_sids: dict[str, set[str]] = {}    # username -> connected socket ids
+challenges: dict[str, dict] = {}       # target username -> {"from": challenger, "task": Task}
 grace_tasks: dict[str, asyncio.Task] = {}
-
-
-def _gen_code() -> str:
-    while True:
-        code = "".join(random.choices(string.ascii_uppercase + string.digits, k=4))
-        if code not in pending and code not in {getattr(g, "code", None) for g in games.values()}:
-            return code
 
 
 def game_of(username: str) -> Game | None:
@@ -42,9 +37,32 @@ def game_of(username: str) -> Game | None:
     return games.get(gid) if gid else None
 
 
+def _presence(username: str) -> str:
+    if username == BOT:
+        return "ai"
+    return "online" if user_sids.get(username) else "offline"
+
+
 def register(sio) -> None:
+    # --- lobby presence -------------------------------------------------
+
+    def user_list() -> list[dict]:
+        rows = []
+        for u in db.all_users():
+            rows.append({
+                **u,
+                "presence": _presence(u["username"]),
+                "inGame": game_of(u["username"]) is not None and u["username"] != BOT,
+            })
+        # online first, then AI, then offline; alphabetical within.
+        order = {"online": 0, "ai": 1, "offline": 2}
+        rows.sort(key=lambda r: (order[r["presence"]], r["username"].lower()))
+        return rows
+
+    async def broadcast_lobby() -> None:
+        await sio.emit("lobby_update", {"users": user_list()}, room=LOBBY)
+
     async def emit_state(game: Game) -> None:
-        # Each human player gets THEIR OWN redacted snapshot (never broadcast one).
         for p in game.players:
             if p == BOT:
                 continue
@@ -62,6 +80,7 @@ def register(sio) -> None:
         for p in game.players:
             if user_game.get(p) == game.id:
                 user_game.pop(p, None)
+        await broadcast_lobby()  # leaderboard + presence refresh
 
     async def run_bot(game: Game) -> None:
         await asyncio.sleep(BOT_DELAY)
@@ -77,25 +96,51 @@ def register(sio) -> None:
         except asyncio.CancelledError:
             return
         game = games.get(gid)
-        if not game or game.status != "playing":
-            return
-        if user_sids.get(username):  # reconnected in time
+        if not game or game.status != "playing" or user_sids.get(username):
             return
         game.status = "over"
         game.winner = game.opponent(username)
         await emit_state(game)
         await finalize(game)
 
-    # --- connection lifecycle ---
+    # --- game creation --------------------------------------------------
+
+    async def create_match(a: str, b: str, vs_ai: bool = False) -> None:
+        gid = uuid.uuid4().hex[:12]
+        game = Game(gid, [a, b], vs_ai=vs_ai)
+        if vs_ai:
+            game.fleets[BOT] = random_fleet()
+            game.set_ready(BOT)
+        games[gid] = game
+        for p in (a, b):
+            if p == BOT:
+                continue
+            user_game[p] = gid
+            for s in list(user_sids.get(p, ())):
+                await sio.enter_room(s, gid)
+        await emit_state(game)
+        await broadcast_lobby()
+
+    def _clear_challenge(target: str) -> None:
+        pend = challenges.pop(target, None)
+        if pend and pend.get("task"):
+            pend["task"].cancel()
+
+    def _drop_user_challenges(username: str) -> None:
+        # remove challenges where this user is the target or the challenger
+        for target in [t for t, p in challenges.items() if t == username or p["from"] == username]:
+            _clear_challenge(target)
+
+    # --- connection lifecycle ------------------------------------------
 
     @sio.event
     async def connect(sid, environ, auth_data):
         username = auth.user_for_token((auth_data or {}).get("token"))
         if not username:
-            return False  # reject unauthenticated sockets
+            return False
         sid_user[sid] = username
         user_sids.setdefault(username, set()).add(sid)
-        # Cancel any pending forfeit; resume an in-progress game.
+        await sio.enter_room(sid, LOBBY)
         task = grace_tasks.pop(username, None)
         if task:
             task.cancel()
@@ -103,6 +148,8 @@ def register(sio) -> None:
         if game:
             await sio.enter_room(sid, game.id)
             await sio.emit("state", game.snapshot_for(username), to=sid)
+        await sio.emit("lobby_update", {"users": user_list()}, to=sid)
+        await broadcast_lobby()
         return True
 
     @sio.event
@@ -114,63 +161,83 @@ def register(sio) -> None:
         if socks:
             socks.discard(sid)
         if not user_sids.get(username):
+            _drop_user_challenges(username)
             game = game_of(username)
             if game and game.status == "playing":
                 grace_tasks[username] = asyncio.create_task(grace_forfeit(username, game.id))
+            await broadcast_lobby()
 
-    # --- lobby ---
+    # --- challenge flow -------------------------------------------------
 
     @sio.event
-    async def create_game(sid, data):
+    async def challenge(sid, data):
+        challenger = sid_user.get(sid)
+        if not challenger:
+            return
+        if game_of(challenger):
+            return await emit_error(sid, "finish your current game first")
+        target = (data or {}).get("target")
+        if not target or target == challenger:
+            return await emit_error(sid, "invalid opponent")
+
+        if target == BOT:
+            return await create_match(challenger, BOT, vs_ai=True)
+
+        if not user_sids.get(target):
+            return await emit_error(sid, "that player is offline")
+        if game_of(target):
+            return await emit_error(sid, "that player is in a game")
+        if target in challenges:
+            return await emit_error(sid, "that player already has a pending challenge")
+        if any(p["from"] == challenger for p in challenges.values()):
+            return await emit_error(sid, "you already have a pending challenge")
+
+        async def expire():
+            try:
+                await asyncio.sleep(CHALLENGE_SECONDS)
+            except asyncio.CancelledError:
+                return
+            challenges.pop(target, None)
+            for s in list(user_sids.get(challenger, ())):
+                await sio.emit("challenge_expired", {"with": target}, to=s)
+            for s in list(user_sids.get(target, ())):
+                await sio.emit("challenge_expired", {"with": challenger}, to=s)
+
+        challenges[target] = {"from": challenger, "task": asyncio.create_task(expire())}
+        for s in list(user_sids.get(target, ())):
+            await sio.emit("challenge_received", {"from": challenger}, to=s)
+        await sio.emit("challenge_sent", {"to": target}, to=sid)
+
+    @sio.event
+    async def challenge_response(sid, data):
+        user = sid_user.get(sid)  # the challenged player
+        if not user:
+            return
+        pend = challenges.pop(user, None)
+        if not pend:
+            return
+        if pend.get("task"):
+            pend["task"].cancel()
+        challenger = pend["from"]
+        if not (data or {}).get("accept"):
+            for s in list(user_sids.get(challenger, ())):
+                await sio.emit("challenge_declined", {"by": user}, to=s)
+            return
+        if not user_sids.get(challenger) or game_of(challenger) or game_of(user):
+            return await emit_error(sid, "challenger is no longer available")
+        await create_match(challenger, user)
+
+    @sio.event
+    async def cancel_challenge(sid, data=None):
         username = sid_user.get(sid)
         if not username:
             return
-        if game_of(username) or username in pending_user:
-            return await emit_error(sid, "you are already in a game")
-        code = _gen_code()
-        if (data or {}).get("vsAI"):
-            gid = uuid.uuid4().hex[:12]
-            game = Game(gid, [username, BOT], vs_ai=True)
-            game.code = code
-            game.fleets[BOT] = random_fleet()
-            game.set_ready(BOT)
-            games[gid] = game
-            user_game[username] = gid
-            await sio.enter_room(sid, gid)
-            await sio.emit("game_created", {"code": code, "vsAI": True}, to=sid)
-            await emit_state(game)
-        else:
-            pending[code] = username
-            pending_user[username] = code
-            await sio.emit("game_created", {"code": code, "waiting": True}, to=sid)
+        for target in [t for t, p in challenges.items() if p["from"] == username]:
+            _clear_challenge(target)
+            for s in list(user_sids.get(target, ())):
+                await sio.emit("challenge_cancelled", {"by": username}, to=s)
 
-    @sio.event
-    async def join_game(sid, data):
-        username = sid_user.get(sid)
-        if not username:
-            return
-        if game_of(username):
-            return await emit_error(sid, "you are already in a game")
-        code = ((data or {}).get("code") or "").upper()
-        creator = pending.get(code)
-        if not creator:
-            return await emit_error(sid, "no such game")
-        if creator == username:
-            return await emit_error(sid, "cannot join your own game")
-        gid = uuid.uuid4().hex[:12]
-        game = Game(gid, [creator, username])
-        game.code = code
-        games[gid] = game
-        user_game[creator] = gid
-        user_game[username] = gid
-        pending.pop(code, None)
-        pending_user.pop(creator, None)
-        for p in (creator, username):
-            for s in list(user_sids.get(p, ())):
-                await sio.enter_room(s, gid)
-        await emit_state(game)
-
-    # --- setup + play (all identity from the socket binding) ---
+    # --- setup + play (identity from the socket binding) ---------------
 
     async def _with_game(sid, fn):
         username = sid_user.get(sid)
@@ -219,10 +286,7 @@ def register(sio) -> None:
         username = sid_user.get(sid)
         if not username:
             return
-        # Drop a pending (un-joined) game outright.
-        code = pending_user.pop(username, None)
-        if code:
-            pending.pop(code, None)
+        _drop_user_challenges(username)
         game = game_of(username)
         if game and game.status == "playing":
             game.status = "over"
@@ -233,3 +297,4 @@ def register(sio) -> None:
             for p in game.players:
                 if user_game.get(p) == game.id:
                     user_game.pop(p, None)
+            await broadcast_lobby()
