@@ -1,0 +1,9 @@
+# Caddy config for homebase. Terminates TLS for api.johnspace.xyz (auto Let's
+# Encrypt) and reverse-proxies to the uvicorn process, including the WebSocket
+# upgrade for Socket.IO. Requires DNS: A api.johnspace.xyz -> homebase public IP.
+#
+#   caddy run --config ./Caddyfile
+
+api.johnspace.xyz {
+	reverse_proxy localhost:8000
+}
