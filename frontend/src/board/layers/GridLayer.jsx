@@ -3,6 +3,7 @@ import { useBoardContext } from "../BoardContext.jsx";
 import { getOffsets } from "../isometric.js";
 import { tileWidth, tileHeight, elevationScale } from "../constants.js";
 import { toScreenCoords } from "../rendering.js";
+import { footprintCells, placementValid } from "../ships.js";
 
 // Overlay for everything that lives on top of the water: the grid outline, the
 // hover highlight, and the shot/hit markers read from the view. Sits at the same
@@ -26,7 +27,7 @@ function tileCenter(x, y, zoom, offsetX, offsetY) {
 
 const GridLayer = () => {
   const canvasRef = useRef(null);
-  const { dimensions, zoom, panX, panY, tiles, hoveredTile, view } = useBoardContext();
+  const { dimensions, zoom, panX, panY, tiles, hoveredTile, view, placement } = useBoardContext();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -93,8 +94,24 @@ const GridLayer = () => {
       }
     }
 
-    // Hover highlight.
-    if (hoveredTile) {
+    // Placement ghost: the candidate ship's footprint follows the cursor during
+    // setup, green if it's a legal placement, red if not.
+    if (placement && hoveredTile) {
+      const cells = footprintCells(hoveredTile, placement.length, placement.orientation);
+      const ok = placementValid(cells, placement.occupied);
+      ctx.fillStyle = ok ? "rgba(110, 255, 160, 0.30)" : "rgba(255, 80, 80, 0.30)";
+      ctx.strokeStyle = ok ? "rgba(150, 255, 190, 0.95)" : "rgba(255, 120, 120, 0.95)";
+      ctx.lineWidth = 2;
+      for (const c of cells) {
+        if (c.x < 0 || c.x >= 10 || c.y < 0 || c.y >= 10) continue;
+        const { screenX, screenY } = toScreenCoords(c.x, c.y, zoom, offsetX, offsetY);
+        ctx.beginPath();
+        tileDiamond(ctx, screenX, screenY, zoom);
+        ctx.fill();
+        ctx.stroke();
+      }
+    } else if (hoveredTile) {
+      // Plain hover highlight (firing / idle).
       const { screenX, screenY } = toScreenCoords(hoveredTile.x, hoveredTile.y, zoom, offsetX, offsetY);
       ctx.beginPath();
       tileDiamond(ctx, screenX, screenY, zoom);
@@ -104,7 +121,7 @@ const GridLayer = () => {
       ctx.lineWidth = 2;
       ctx.stroke();
     }
-  }, [dimensions, zoom, panX, panY, tiles, hoveredTile, view]);
+  }, [dimensions, zoom, panX, panY, tiles, hoveredTile, view, placement]);
 
   return (
     <canvas

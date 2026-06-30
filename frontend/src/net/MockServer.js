@@ -48,6 +48,21 @@ function fleetDefeated(ships) {
   return ships.every(shipIsSunk);
 }
 
+// Cells form a single straight, gap-free horizontal or vertical run.
+function isStraightContiguous(cells) {
+  if (cells.length === 0) return false;
+  if (cells.length === 1) return true;
+  const sameRow = cells.every((c) => c.y === cells[0].y);
+  const sameCol = cells.every((c) => c.x === cells[0].x);
+  if (!sameRow && !sameCol) return false;
+  const axis = sameRow ? "x" : "y";
+  const vals = cells.map((c) => c[axis]).sort((a, b) => a - b);
+  for (let i = 1; i < vals.length; i++) {
+    if (vals[i] !== vals[i - 1] + 1) return false;
+  }
+  return true;
+}
+
 export default class MockServer {
   constructor() {
     this.listeners = new Map();
@@ -72,16 +87,15 @@ export default class MockServer {
     return Promise.resolve({ username, token: `mock-${username}` });
   }
 
-  // Start a vs-AI game. Both fleets are placed randomly (the design doc lets the
-  // AI place randomly; the human's manual placement phase comes in a later
-  // milestone). You move first.
+  // Start a vs-AI game in the SETUP phase. The AI places randomly now (hidden);
+  // the human places their fleet via placeShip, then ready() begins play.
   startVsAI() {
     if (this.aiTimer) clearTimeout(this.aiTimer);
     this.game = {
       id: `g-${Date.now()}`,
-      status: "playing", // skips the setup phase for this slice
-      turn: "you",
-      fleets: { you: randomFleet(), ai: randomFleet() },
+      status: "setup",
+      turn: null,
+      fleets: { you: [], ai: randomFleet() },
       // shots[by] = ordered list of { x, y, result, sunkShip } that `by` fired
       shots: { you: [], ai: [] },
       fired: { you: new Set(), ai: new Set() }, // dedupe of cells `by` has fired at
@@ -91,6 +105,46 @@ export default class MockServer {
     };
     this.publish();
     return this.game.id;
+  }
+
+  // --- setup phase: ship placement ---------------------------------------
+
+  // Place (or reposition) one of the player's ships. Validates kind, length,
+  // straightness, bounds, and overlap with the player's other ships.
+  placeShip(kind, cells) {
+    const g = this.game;
+    if (!g || g.status !== "setup") return this.reject("not in setup");
+    if (!SHIP_KINDS[kind]) return this.reject("unknown ship");
+    if (cells.length !== SHIP_KINDS[kind].length) return this.reject("wrong length");
+    if (!cells.every((c) => inBounds(c.x, c.y))) return this.reject("off board");
+    if (!isStraightContiguous(cells)) return this.reject("must be a straight line");
+
+    // Overlap check against the player's OTHER ships (reposition replaces).
+    const others = g.fleets.you.filter((s) => s.kind !== kind);
+    const taken = new Set(others.flatMap((s) => s.cells.map((c) => key(c.x, c.y))));
+    if (cells.some((c) => taken.has(key(c.x, c.y)))) return this.reject("ships overlap");
+
+    g.fleets.you = [...others, { id: kind, kind, cells, hits: new Set() }];
+    this.publish();
+    return true;
+  }
+
+  clearPlacement() {
+    const g = this.game;
+    if (!g || g.status !== "setup") return;
+    g.fleets.you = [];
+    this.publish();
+  }
+
+  // Begin play once the whole fleet is placed. You move first.
+  ready() {
+    const g = this.game;
+    if (!g || g.status !== "setup") return this.reject("not in setup");
+    const placed = new Set(g.fleets.you.map((s) => s.kind));
+    if (!FLEET.every((k) => placed.has(k))) return this.reject("place all ships first");
+    g.status = "playing";
+    g.turn = "you";
+    this.publish();
   }
 
   // --- the fire pipeline (the only in-play write path) -------------------

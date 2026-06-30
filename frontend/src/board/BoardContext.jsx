@@ -36,7 +36,7 @@ function buildWaterTiles() {
   return tiles;
 }
 
-export function BoardProvider({ view, dimensions, initialZoom = 1.2, children }) {
+export function BoardProvider({ view, dimensions, placement = null, initialZoom = 1.2, children }) {
   const [zoom, setZoom] = useState(initialZoom);
   const [panX, setPanX] = useState(0);
   const [panY, setPanY] = useState(0);
@@ -56,6 +56,7 @@ export function BoardProvider({ view, dimensions, initialZoom = 1.2, children })
     hoveredTile,
     setHoveredTile,
     view,
+    placement,
     // Empty texture set: water has no texture, so drawTile falls back to color.
     textures: {},
   };
