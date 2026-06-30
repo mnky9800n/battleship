@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from . import auth, db
+from . import auth, brain, db
 from .engine import Game, GameError, random_fleet
 
 BOT = db.BOT_USERNAME
@@ -84,11 +84,21 @@ def register(sio) -> None:
 
     async def run_bot(game: Game) -> None:
         await asyncio.sleep(BOT_DELAY)
-        if game.status == "playing" and game.turn == BOT:
-            game.ai_take_turn(BOT)
-            await emit_state(game)
-            if game.status == "over":
-                await finalize(game)
+        if game.status != "playing" or game.turn != BOT:
+            return
+        # Claude picks the move + taunt (hunt/target fallback inside the brain).
+        move = await brain.take_turn(game, BOT, getattr(game, "ai_sentience_summary", None))
+        if not move:
+            return
+        try:
+            game.fire(BOT, move["x"], move["y"])
+        except GameError:
+            return
+        if move.get("taunt"):
+            await sio.emit("chat", {"from": BOT, "text": move["taunt"]}, room=game.id)
+        await emit_state(game)
+        if game.status == "over":
+            await finalize(game)
 
     async def grace_forfeit(username: str, gid: str) -> None:
         try:
@@ -280,6 +290,18 @@ def register(sio) -> None:
         if game:
             await sio.enter_room(sid, game.id)
             await sio.emit("state", game.snapshot_for(username), to=sid)
+
+    @sio.event
+    async def chat(sid, data):
+        # Relay a chat line to the game room. In vs-AI games this text is shown
+        # but NEVER fed to the brain (prompt-injection defense).
+        username = sid_user.get(sid)
+        game = game_of(username) if username else None
+        if not game:
+            return
+        text = ((data or {}).get("text") or "").strip()[:280]
+        if text:
+            await sio.emit("chat", {"from": username, "text": text}, room=game.id)
 
     @sio.event
     async def leave(sid, data=None):

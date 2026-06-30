@@ -70,6 +70,10 @@ export default class GameClient {
     this.transport.fire(x, y);
   }
 
+  sendChat(text) {
+    this.transport.sendChat?.(text);
+  }
+
   leave() {
     this.transport.leave?.();
   }

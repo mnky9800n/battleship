@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import BoardRenderer from "../board/BoardRenderer.jsx";
 import { SHIP_KINDS, FLEET, footprintCells, placementValid } from "../board/ships.js";
 import ShipSprite from "../board/ShipSprite.jsx";
+import Chat from "./Chat.jsx";
 import { T, FONT, titleStyle, btnStyle, solidBtnStyle } from "../theme.js";
 
 // The two-board game: SETUP (place your fleet) then PLAY (fire). Driven by the
@@ -12,17 +13,25 @@ const COL = (x) => String.fromCharCode(65 + x);
 const coord = (s) => (s ? `${COL(s.x)}${s.y + 1}` : "--");
 const cellKey = (c) => `${c.x},${c.y}`;
 
-export default function GameScreen({ client, snap, notify, onExit }) {
+export default function GameScreen({ client, snap, user, notify, onExit }) {
   const [selectedKind, setSelectedKind] = useState(FLEET[0]);
   const [orientation, setOrientation] = useState("h");
+  const [messages, setMessages] = useState([]);
 
-  // Reset placement selection when a fresh game starts.
+  // Chat: append every chat line (yours + the opponent's / AI taunts).
+  useEffect(() => {
+    const off = client.on("chat", (m) => setMessages((prev) => [...prev, m]));
+    return () => off && off();
+  }, [client]);
+
+  // Reset placement + chat when a fresh game starts.
   const lastGame = useRef(null);
   useEffect(() => {
     if (snap && snap.gameId !== lastGame.current) {
       lastGame.current = snap.gameId;
       setSelectedKind(FLEET[0]);
       setOrientation("h");
+      setMessages([]);
     }
   }, [snap]);
 
@@ -135,6 +144,9 @@ export default function GameScreen({ client, snap, notify, onExit }) {
           </Panel>
         </div>
       )}
+
+      {/* in-game chat (taunts land here) */}
+      {!isSetup && <Chat messages={messages} onSend={(t) => client.sendChat(t)} me={user?.username} />}
 
       {/* win/lose popup */}
       {over && (

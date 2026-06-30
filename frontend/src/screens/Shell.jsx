@@ -80,7 +80,7 @@ export default function Shell({ client, user, notify, onLogout }) {
         {tab === "leaderboard" && <Leaderboard users={users} />}
         {tab === "game" && (
           snap
-            ? <GameScreen client={client} snap={snap} notify={notify} onExit={toLobby} />
+            ? <GameScreen client={client} snap={snap} user={user} notify={notify} onExit={toLobby} />
             : <div style={empty}>no active game — challenge someone from matchmaking</div>
         )}
       </main>
