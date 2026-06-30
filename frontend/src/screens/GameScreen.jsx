@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import BoardRenderer from "../board/BoardRenderer.jsx";
 import { SHIP_KINDS, FLEET, footprintCells, placementValid } from "../board/ships.js";
-import { thumbnailFor } from "../board/shipThumbnails.js";
+import ShipSprite from "../board/ShipSprite.jsx";
 import { T, FONT, titleStyle, btnStyle, solidBtnStyle } from "../theme.js";
 
 // The two-board game: SETUP (place your fleet) then PLAY (fire). Driven by the
@@ -158,7 +158,7 @@ function ShipMenu({ placed, onPick }) {
   return (
     <div style={shipMenuStyle}>
       {FLEET.map((kind) => (
-        <ShipThumb
+        <ShipSprite
           key={kind}
           kind={kind}
           done={placed.has(kind)}
@@ -166,24 +166,6 @@ function ShipMenu({ placed, onPick }) {
         />
       ))}
     </div>
-  );
-}
-
-function ShipThumb({ kind, done, onDragStart }) {
-  const [url, setUrl] = useState(null);
-  useEffect(() => {
-    let on = true;
-    thumbnailFor(kind).then((u) => on && setUrl(u)).catch(() => {});
-    return () => { on = false; };
-  }, [kind]);
-  return (
-    <img
-      src={url || undefined}
-      alt=""
-      draggable
-      onDragStart={onDragStart}
-      style={{ width: "100%", height: 64, objectFit: "contain", opacity: done ? 0.4 : 1, cursor: "grab" }}
-    />
   );
 }
 
