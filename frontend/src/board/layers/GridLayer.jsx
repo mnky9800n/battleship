@@ -1,0 +1,102 @@
+import React, { useRef, useEffect } from "react";
+import { useBoardContext } from "../BoardContext.jsx";
+import { getOffsets } from "../isometric.js";
+import { tileWidth, tileHeight, elevationScale } from "../constants.js";
+import { toScreenCoords } from "../rendering.js";
+
+// Overlay for everything that lives on top of the water: the grid outline, the
+// hover highlight, and the shot/hit markers read from the view. Sits at the same
+// "surface" height as the water sheen so markers rest on the waterline.
+const SURFACE = (zoom) => -0.35 * elevationScale * zoom;
+
+// Trace the diamond for one tile at surface height into the current path.
+function tileDiamond(ctx, sx, sy, zoom) {
+  const off = SURFACE(zoom);
+  ctx.moveTo(sx, sy + off);
+  ctx.lineTo(sx + (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + off);
+  ctx.lineTo(sx, sy + tileHeight * zoom + off);
+  ctx.lineTo(sx - (tileWidth / 2) * zoom, sy + (tileHeight / 2) * zoom + off);
+  ctx.closePath();
+}
+
+function tileCenter(x, y, zoom, offsetX, offsetY) {
+  const { screenX, screenY } = toScreenCoords(x, y, zoom, offsetX, offsetY);
+  return { cx: screenX, cy: screenY + (tileHeight / 2) * zoom + SURFACE(zoom) };
+}
+
+const GridLayer = () => {
+  const canvasRef = useRef(null);
+  const { dimensions, zoom, panX, panY, tiles, hoveredTile, view } = useBoardContext();
+
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0, 0, dimensions.width, dimensions.height);
+
+    const { offsetX, offsetY } = getOffsets(dimensions, zoom, panX, panY);
+
+    // Grid cell outlines.
+    ctx.lineWidth = 1;
+    ctx.strokeStyle = "rgba(120, 200, 235, 0.28)";
+    for (const tile of tiles) {
+      const { screenX, screenY } = toScreenCoords(tile.x, tile.y, zoom, offsetX, offsetY);
+      ctx.beginPath();
+      tileDiamond(ctx, screenX, screenY, zoom);
+      ctx.stroke();
+    }
+
+    // Incoming enemy hits on your board (orange bursts).
+    for (const hit of view?.ownHits ?? []) {
+      const { cx, cy } = tileCenter(hit.x, hit.y, zoom, offsetX, offsetY);
+      ctx.fillStyle = "rgba(255, 140, 40, 0.9)";
+      ctx.beginPath();
+      ctx.arc(cx, cy, 5 * zoom, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Your shots on the enemy (red X for hit, white ring for miss).
+    for (const shot of view?.shots ?? []) {
+      const { cx, cy } = tileCenter(shot.x, shot.y, zoom, offsetX, offsetY);
+      const r = 6 * zoom;
+      if (shot.result === "hit") {
+        ctx.strokeStyle = "#ff3b3b";
+        ctx.lineWidth = 2.5 * zoom;
+        ctx.beginPath();
+        ctx.moveTo(cx - r, cy - r);
+        ctx.lineTo(cx + r, cy + r);
+        ctx.moveTo(cx + r, cy - r);
+        ctx.lineTo(cx - r, cy + r);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = "rgba(235, 245, 255, 0.85)";
+        ctx.lineWidth = 1.5 * zoom;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r * 0.7, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
+
+    // Hover highlight.
+    if (hoveredTile) {
+      const { screenX, screenY } = toScreenCoords(hoveredTile.x, hoveredTile.y, zoom, offsetX, offsetY);
+      ctx.beginPath();
+      tileDiamond(ctx, screenX, screenY, zoom);
+      ctx.fillStyle = "rgba(120, 230, 255, 0.22)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(160, 245, 255, 0.95)";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+  }, [dimensions, zoom, panX, panY, tiles, hoveredTile, view]);
+
+  return (
+    <canvas
+      ref={canvasRef}
+      width={dimensions.width}
+      height={dimensions.height}
+      style={{ position: "absolute", inset: 0, zIndex: 3, pointerEvents: "none" }}
+    />
+  );
+};
+
+export default GridLayer;
