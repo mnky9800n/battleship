@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback } from "react";
 import BoardRenderer from "../board/BoardRenderer.jsx";
 import { SHIP_KINDS, FLEET, footprintCells, placementValid } from "../board/ships.js";
+import { thumbnailFor } from "../board/shipThumbnails.js";
 import { T, FONT, titleStyle, btnStyle, solidBtnStyle } from "../theme.js";
 
 // The two-board game: SETUP (place your fleet) then PLAY (fire). Driven by the
@@ -168,8 +169,8 @@ function ShipMenu({ placed, onPick }) {
             title={done ? `${label} placed` : `drag ${label} onto the board`}
             style={{ ...shipItem, opacity: done ? 0.4 : 1, cursor: done ? "default" : "grab" }}
           >
-            <ShipIcon length={length} />
-            <span style={{ fontSize: 14 }}>{done ? "✓ " : ""}{label} {length}</span>
+            <ShipThumb kind={kind} />
+            <span style={{ fontSize: 14, flex: 1 }}>{done ? "✓ " : ""}{label}<br /><span style={{ fontSize: 11, color: T.greenDim }}>{length} cells</span></span>
           </div>
         );
       })}
@@ -177,14 +178,16 @@ function ShipMenu({ placed, onPick }) {
   );
 }
 
-function ShipIcon({ length }) {
-  return (
-    <span style={{ display: "inline-flex", gap: 2 }}>
-      {Array.from({ length }).map((_, i) => (
-        <span key={i} style={{ width: 13, height: 13, background: T.green, boxShadow: "0 0 4px rgba(57,255,20,0.6)" }} />
-      ))}
-    </span>
-  );
+function ShipThumb({ kind }) {
+  const [url, setUrl] = useState(null);
+  useEffect(() => {
+    let on = true;
+    thumbnailFor(kind).then((u) => on && setUrl(u)).catch(() => {});
+    return () => { on = false; };
+  }, [kind]);
+  return url
+    ? <img src={url} alt="" draggable={false} style={{ width: 64, height: 46, objectFit: "contain" }} />
+    : <span style={{ width: 64, height: 46, display: "inline-block" }} />;
 }
 
 function Panel({ label, sub, divider, active, children }) {
