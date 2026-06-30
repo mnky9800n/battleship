@@ -1,27 +1,41 @@
 import MockServer from "./MockServer.js";
+import SocketTransport from "./SocketTransport.js";
 
 // The single seam between the UI and the game authority. Components only ever
-// touch this facade, never the transport, so swapping the in-browser MockServer
-// for a real FastAPI/Socket.IO connection later is a one-line change here.
+// touch this facade, never the transport.
 //
-// Events (subscribe with .on):
-//   "state" -> full redacted snapshot { status, whoseTurn, winner, own, enemy, lastShot }
-//   "error" -> { message }
+// REACT_APP_API_URL set  -> online: real server (SocketTransport), cheat-proof.
+// REACT_APP_API_URL unset -> offline: in-browser MockServer (practice vs AI).
 //
-// The event names and the snapshot shape are the contract the real server will
-// implement.
+// Both transports expose the same on/emit bus and the same action surface, so
+// the UI is identical in either mode.
+
+const API_URL = process.env.REACT_APP_API_URL;
 
 export default class GameClient {
-  constructor(transport = new MockServer()) {
-    this.transport = transport;
+  constructor() {
+    this.online = Boolean(API_URL);
+    this.transport = this.online ? new SocketTransport(API_URL) : new MockServer();
   }
 
   on(event, cb) {
     return this.transport.on(event, cb);
   }
 
-  async login(username, password) {
+  signup(username, password) {
+    return this.transport.signup(username, password);
+  }
+
+  login(username, password) {
     return this.transport.login(username, password);
+  }
+
+  createGame(opts) {
+    return this.transport.createGame(opts || {});
+  }
+
+  joinGame(code) {
+    return this.transport.joinGame(code);
   }
 
   startVsAI() {
@@ -41,8 +55,10 @@ export default class GameClient {
   }
 
   fire(x, y) {
-    // Identity ("you") is bound by the transport, mirroring the design's
-    // socket-bound identity. A real client would not pass the actor at all.
-    this.transport.fire("you", x, y);
+    this.transport.fire(x, y);
+  }
+
+  leave() {
+    this.transport.leave?.();
   }
 }

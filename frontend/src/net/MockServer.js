@@ -84,8 +84,23 @@ export default class MockServer {
 
   // Minimal "login": the trial's security is intentionally trivial.
   login(username) {
-    return Promise.resolve({ username, token: `mock-${username}` });
+    return Promise.resolve({ username, token: `mock-${username}`, avatar: null });
   }
+
+  // Offline parity with SocketTransport. Offline mode is practice-vs-AI only.
+  signup(username) {
+    return Promise.resolve({ username, token: `mock-${username}`, avatar: null });
+  }
+
+  createGame() {
+    this.startVsAI(); // offline: any "create" is a vs-AI practice game
+  }
+
+  joinGame() {
+    this.emit("error", { message: "joining is online-only — start the server for multiplayer" });
+  }
+
+  leave() {}
 
   // Start a vs-AI game in the SETUP phase. The AI places randomly now (hidden);
   // the human places their fleet via placeShip, then ready() begins play.
@@ -149,7 +164,13 @@ export default class MockServer {
 
   // --- the fire pipeline (the only in-play write path) -------------------
 
-  fire(by, x, y) {
+  // Public action used by GameClient: the human ("you") fires. Identity is fixed
+  // here, mirroring the server binding identity to the socket.
+  fire(x, y) {
+    this._fire("you", x, y);
+  }
+
+  _fire(by, x, y) {
     const g = this.game;
     // 1. game live?
     if (!g || g.status !== "playing") return this.reject("game not live");
@@ -206,7 +227,7 @@ export default class MockServer {
     if (!g || g.status !== "playing" || g.turn !== "ai") return;
 
     const cell = this.aiPickCell();
-    if (cell) this.fire("ai", cell.x, cell.y);
+    if (cell) this._fire("ai", cell.x, cell.y);
   }
 
   aiPickCell() {
