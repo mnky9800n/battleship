@@ -31,3 +31,7 @@ added ship assets. now there are 3d models of ships to use.
 # day 2 - part 1
 
 I have looped claude-code in on the design document and now we are iterating on the plan. learning websockets as fast as possible. love learning new shit.
+
+finally something isnt working on this project, i thought claude was getting too good. a github action keeps failing and i have no idea why! yay. i will figure it out. persistence is key. heh.
+
+i think its some typescript version issue. that wasn't difficult.
