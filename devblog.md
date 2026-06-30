@@ -21,3 +21,9 @@ more thoughts from sentience: Anti-cheat: the key is never send ship positions t
 more thoughts from me: i do think the spike is to have some sort of AI playing the game and maybe like taunting you through the chat? i dont know that seems expensive but maybe its worth it. i would like to do sentience integration since it would just be so much fun, lets see what claude comes up with in planning mode.
 
 notes: i have selected and added boat assets, these should look good on the map, assuming they are adequately sized next to the whales.
+
+# day 1 - part 2
+
+I made a design doc called battleship_design_doc.pdf. it serves as the core design doc for the whole game and can be used by claude code to build everything. I gave this design doc to claude who gave some helpful additional diagrams to add that included some loops i didn't think about that would make the timeouts for disconnects more explicit in teh design doc. timeouts can come from two reasons, out of game during a challenge to another player the other player doesn't reply you within the given grace period (currently 60 seconds), or, during gameplay, the player logs out or disconnects for whatever reason for longer than the grace period.
+
+added ship assets. now there are 3d models of ships to use.
