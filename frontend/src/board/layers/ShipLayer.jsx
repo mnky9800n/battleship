@@ -24,6 +24,9 @@ const LIFT = elevationScale;    // unzoomed; pixels per unit of model height
 
 // A ship spans its length in cells; SHIP_FILL leaves a small margin within them.
 const SHIP_FILL = 0.9;
+// Lift each hull above the waterline by this fraction of its own height, so the
+// ship floats on the surface instead of being centered (half-submerged) on it.
+const SHIP_RAISE = 0.5;
 
 const MODEL_URL = (kind) => `${process.env.PUBLIC_URL}/assets/ships/${kind}.glb`;
 
@@ -181,6 +184,7 @@ const ShipLayer = () => {
         box.getCenter(center);
         box.getSize(size);
         model.position.sub(center);
+        model.position.y += size.y * SHIP_RAISE; // float above the waterline
         const lengthAlongZ = size.z > size.x;
         const modelLength = Math.max(size.x, size.z) || 1;
 
