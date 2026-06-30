@@ -2,11 +2,9 @@ import React, { useState, useEffect, useRef, useCallback } from "react";
 import BoardRenderer from "./board/BoardRenderer.jsx";
 import GameClient from "./net/GameClient.js";
 
-// Milestone 2: the frontend plays a full game against a backend that doesn't
-// exist yet. GameClient -> MockServer runs the real rules in the browser; this
-// component never knows the authority is a mock. Clicking enemy waters fires
-// through the client, the (mock) AI fires back, and the redacted views update
-// live, exactly as they will over a socket.
+// Two-board layout: your waters (fleet + incoming fire) on the left, enemy
+// waters (your shots; click to fire) on the right. Both are driven live by the
+// GameClient -> MockServer authority.
 
 const COL = (x) => String.fromCharCode(65 + x);
 const coord = (s) => (s ? `${COL(s.x)}${s.y + 1}` : "--");
@@ -17,13 +15,9 @@ export default function App() {
   const client = clientRef.current;
 
   const [snap, setSnap] = useState(null);
-  const [mode, setMode] = useState("enemy"); // "enemy" = firing grid, "mine" = your fleet
   const [flash, setFlash] = useState(null);
 
-  const newGame = useCallback(() => {
-    client.startVsAI();
-    setMode("enemy");
-  }, [client]);
+  const newGame = useCallback(() => client.startVsAI(), [client]);
 
   useEffect(() => {
     const off = client.on("state", setSnap);
@@ -41,12 +35,8 @@ export default function App() {
     return () => clearTimeout(t);
   }, [flash]);
 
-  const handleTileClick = useCallback(
+  const handleFire = useCallback(
     (tile) => {
-      if (mode !== "enemy") {
-        setFlash("switch to enemy waters to fire");
-        return;
-      }
       if (!snap || snap.status !== "playing") return;
       if (snap.whoseTurn !== "you") {
         setFlash("not your turn");
@@ -54,49 +44,49 @@ export default function App() {
       }
       client.fire(tile.x, tile.y);
     },
-    [client, mode, snap]
+    [client, snap]
   );
 
-  const view = snap ? (mode === "enemy" ? snap.enemy : snap.own) : null;
   const yourTurn = snap?.whoseTurn === "you";
   const over = snap?.status === "over";
   const won = over && snap?.winner === "you";
 
   return (
-    <div style={{ position: "absolute", inset: 0 }}>
-      {view && <BoardRenderer view={view} onTileClick={handleTileClick} />}
-
-      {/* HUD */}
-      <div style={hudStyle}>
-        <div style={{ fontSize: 20, letterSpacing: 3 }}>BATTLESHIP</div>
-        <div style={{ opacity: 0.6, fontSize: 11, marginBottom: 10 }}>
-          drag pan · wheel zoom · click fires on enemy waters
+    <div style={{ position: "absolute", inset: 0, display: "flex", flexDirection: "column" }}>
+      {/* Top bar */}
+      <div style={barStyle}>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 16 }}>
+          <span style={{ fontSize: 20, letterSpacing: 3 }}>BATTLESHIP</span>
+          <span style={{ fontSize: 11, opacity: 0.55 }}>
+            drag pan · wheel zoom · click enemy waters to fire
+          </span>
         </div>
-
-        <div style={{ display: "flex", gap: 6, marginBottom: 10, pointerEvents: "auto" }}>
-          <Toggle on={mode === "enemy"} onClick={() => setMode("enemy")} label="ENEMY WATERS" />
-          <Toggle on={mode === "mine"} onClick={() => setMode("mine")} label="YOUR FLEET" />
+        <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
+          <span style={{ fontSize: 13, color: over ? (won ? "#6effa0" : "#ff6e6e") : yourTurn ? "#9fe8ff" : "#ffb066" }}>
+            {over
+              ? won
+                ? "ENEMY FLEET DESTROYED — YOU WIN"
+                : "YOUR FLEET LOST"
+              : yourTurn
+              ? "YOUR TURN — fire at will"
+              : "ENEMY TURN…"}
+          </span>
+          <span style={{ fontSize: 12, opacity: 0.75 }}>
+            last: {coord(snap?.lastShot)}
+            {snap?.lastShot?.result ? ` (${snap.lastShot.result}${snap.lastShot.sunkShip ? " · sank " + snap.lastShot.sunkShip : ""})` : ""}
+          </span>
+          <button onClick={newGame} style={btnStyle}>↻ NEW GAME</button>
         </div>
+      </div>
 
-        <div style={{ fontSize: 13 }}>
-          {over ? (
-            <span style={{ color: won ? "#6effa0" : "#ff6e6e" }}>
-              {won ? "ENEMY FLEET DESTROYED — YOU WIN" : "YOUR FLEET LOST"}
-            </span>
-          ) : (
-            <span style={{ color: yourTurn ? "#9fe8ff" : "#ffb066" }}>
-              {yourTurn ? "YOUR TURN — fire at will" : "ENEMY TURN…"}
-            </span>
-          )}
-        </div>
-        <div style={{ fontSize: 12, opacity: 0.8, marginTop: 4 }}>
-          last shot: {coord(snap?.lastShot)}{" "}
-          {snap?.lastShot?.result ? `(${snap.lastShot.result}${snap.lastShot.sunkShip ? " — sank " + snap.lastShot.sunkShip : ""})` : ""}
-        </div>
-
-        <button onClick={newGame} style={btnStyle}>
-          ↻ NEW GAME
-        </button>
+      {/* Boards */}
+      <div style={{ flex: 1, display: "flex", minHeight: 0 }}>
+        <Panel label="YOUR WATERS" sub="your fleet · incoming fire">
+          {snap && <BoardRenderer view={snap.own} />}
+        </Panel>
+        <Panel label="ENEMY WATERS" sub="your shots · click to fire" divider active={yourTurn && !over}>
+          {snap && <BoardRenderer view={snap.enemy} onTileClick={handleFire} />}
+        </Panel>
       </div>
 
       {flash && <div style={flashStyle}>{flash}</div>}
@@ -104,28 +94,61 @@ export default function App() {
   );
 }
 
-const hudStyle = {
-  position: "absolute",
-  top: 16,
-  left: 16,
-  zIndex: 10,
+function Panel({ label, sub, divider, active, children }) {
+  return (
+    <div
+      style={{
+        flex: 1,
+        position: "relative",
+        minWidth: 0,
+        borderLeft: divider ? "1px solid rgba(120,200,235,0.18)" : "none",
+        background: "radial-gradient(circle at 50% 40%, #0b2030 0%, #06121b 72%)",
+        boxShadow: active ? "inset 0 0 0 2px rgba(120,230,255,0.35)" : "none",
+      }}
+    >
+      {children}
+      <div style={labelStyle}>
+        <div style={{ fontSize: 14, letterSpacing: 2 }}>{label}</div>
+        <div style={{ fontSize: 10, opacity: 0.55 }}>{sub}</div>
+      </div>
+    </div>
+  );
+}
+
+const FONT = '"Courier New", monospace';
+
+const barStyle = {
+  flex: "0 0 auto",
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "space-between",
+  padding: "10px 16px",
   color: "#9fe8ff",
-  textShadow: "0 0 6px rgba(40,180,230,0.55)",
-  fontFamily: '"Courier New", monospace',
-  lineHeight: 1.5,
+  fontFamily: FONT,
+  textShadow: "0 0 6px rgba(40,180,230,0.45)",
+  background: "#06121b",
+  borderBottom: "1px solid rgba(120,200,235,0.18)",
+  userSelect: "none",
+};
+
+const labelStyle = {
+  position: "absolute",
+  top: 12,
+  left: 14,
+  color: "#9fe8ff",
+  fontFamily: FONT,
+  textShadow: "0 0 6px rgba(40,180,230,0.5)",
   pointerEvents: "none",
   userSelect: "none",
 };
 
 const btnStyle = {
-  marginTop: 12,
-  pointerEvents: "auto",
   cursor: "pointer",
   background: "transparent",
   color: "#9fe8ff",
   border: "1px solid rgba(120,200,235,0.5)",
   padding: "5px 10px",
-  fontFamily: '"Courier New", monospace',
+  fontFamily: FONT,
   fontSize: 12,
   letterSpacing: 1,
 };
@@ -139,27 +162,7 @@ const flashStyle = {
   color: "#06121b",
   background: "#9fe8ff",
   padding: "6px 14px",
-  fontFamily: '"Courier New", monospace',
+  fontFamily: FONT,
   fontSize: 12,
   letterSpacing: 1,
 };
-
-function Toggle({ on, onClick, label }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        cursor: "pointer",
-        fontFamily: '"Courier New", monospace',
-        fontSize: 11,
-        letterSpacing: 1,
-        padding: "5px 9px",
-        color: on ? "#06121b" : "#9fe8ff",
-        background: on ? "#9fe8ff" : "transparent",
-        border: "1px solid rgba(120,200,235,0.5)",
-      }}
-    >
-      {label}
-    </button>
-  );
-}
