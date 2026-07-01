@@ -50,7 +50,9 @@ Four AI opponents in the lobby:
   positions never leave it, each shot returns only a redacted result, and a move's
   identity comes from the socket binding, never the payload.
 - **Survives a mid-game refresh:** reconnect replays your redacted view + the chat
-  transcript. Completed games (moves, outcome, timestamps) are stored in SQLite.
+  transcript. Completed games (moves, outcome, timestamps) are stored in SQLite and
+  queryable via a read API (`GET /games` for the history, `GET /games/{id}` for a
+  single game's full move log).
 - In-game chat with a collapsible COMMS panel.
 - Isometric board with the real `.glb` ship models, drag-drop placement, zoom.
 
