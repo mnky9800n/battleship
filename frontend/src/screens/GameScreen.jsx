@@ -23,7 +23,8 @@ export default function GameScreen({ client, snap, user, notify, onExit }) {
   // mount rebuilds the panel after a refresh while the game is still live.
   useEffect(() => {
     const offs = [
-      client.on("chat", (m) => setMessages((prev) => [...prev, m])),
+      client.on("chat", (m) => setMessages((prev) =>
+        prev.some((x) => x.id === m.id) ? prev : [...prev, m])),
       client.on("chat_history", (d) => setMessages(d.messages || [])),
     ];
     client.refreshChat();

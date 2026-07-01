@@ -111,7 +111,12 @@ export default class SocketTransport {
     // mounting after connect, e.g. on a refresh) can pull the current view.
     this.socket.on("lobby_update", (d) => { this.lastLobby = d; this.emit("lobby_update", d); });
     this.socket.on("state", (d) => { this.lastState = d; this.emit("state", d); });
-    this.socket.on("chat", (d) => { this.chatLog.push(d); this.emit("chat", d); });
+    this.socket.on("chat", (d) => {
+      // Dedupe by the server's per-game id so a double delivery doesn't get
+      // cached twice (and re-served on refreshChat).
+      if (!this.chatLog.some((x) => x.id === d.id)) this.chatLog.push(d);
+      this.emit("chat", d);
+    });
     this.socket.on("chat_history", (d) => { this.chatLog = d.messages || []; this.emit("chat_history", d); });
     this.socket.on("connect_error", (e) => {
       if (this._suppressErrors) return;
