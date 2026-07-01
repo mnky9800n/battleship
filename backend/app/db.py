@@ -22,6 +22,7 @@ BOTS = {
     "ClassicBot": "classic",      # hardcoded hunt/target, no LLM
     "HaikuBot": "haiku",          # Claude picks moves + taunts, no memory
     "SentienceBot": "sentience",  # Claude + your Sentience memories
+    "BayesBot": "bayes",          # probability-density belief-state targeting, no LLM
 }
 
 

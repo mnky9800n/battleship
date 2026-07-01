@@ -9,6 +9,7 @@ const AI_DESC = {
   classic: "HARDCODED ALGORITHM · NO LLM",
   haiku: "CLAUDE HAIKU · MOVES + TAUNTS",
   sentience: "CLAUDE HAIKU + YOUR SENTIENCE",
+  bayes: "BAYESIAN BELIEF-STATE · NO LLM",
 };
 
 function avatarUrl(u) {
