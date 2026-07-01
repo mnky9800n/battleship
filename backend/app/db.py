@@ -149,3 +149,31 @@ def save_completed_game(game) -> None:
             ],
         )
         conn.commit()
+
+
+def recent_games(limit: int = 50, player: str | None = None) -> list[dict]:
+    """Completed games, newest first — optionally filtered to one player."""
+    conn = connect()
+    sql = "SELECT id, p1, p2, status, winner, created_at, ended_at FROM games"
+    params: tuple = ()
+    if player:
+        sql += " WHERE p1 = ? OR p2 = ?"
+        params = (player, player)
+    sql += " ORDER BY ended_at DESC LIMIT ?"
+    cur = conn.execute(sql, params + (limit,))
+    return [dict(r) for r in cur.fetchall()]
+
+
+def get_game(game_id: str) -> dict | None:
+    """One completed game with its full append-only move log, for replay/query."""
+    conn = connect()
+    row = conn.execute("SELECT * FROM games WHERE id = ?", (game_id,)).fetchone()
+    if row is None:
+        return None
+    moves = conn.execute(
+        "SELECT seq, player, x, y, result FROM moves WHERE game_id = ? ORDER BY seq",
+        (game_id,),
+    ).fetchall()
+    record = dict(row)
+    record["moves"] = [dict(m) for m in moves]
+    return record
