@@ -14,7 +14,7 @@ from __future__ import annotations
 import asyncio
 import uuid
 
-from . import auth, brain, db, sentience
+from . import auth, bayes, brain, db, sentience
 from .engine import Game, GameError, random_fleet
 
 GRACE_SECONDS = 60
@@ -114,12 +114,22 @@ def register(sio) -> None:
         if not bot or game.status != "playing" or game.turn != bot:
             return
         mode = getattr(game, "ai_mode", "haiku")
-        # Sentience mode: fetch + summarize the player's memories once.
-        if mode == "sentience" and getattr(game, "ai_key", None) and not game.ai_summary_fetched:
-            game.ai_summary_fetched = True
-            game.ai_sentience_summary = await sentience.summarize(game.ai_key)
-        # Claude picks move + taunt (classic mode skips the LLM entirely).
-        move = await brain.take_turn(game, bot, getattr(game, "ai_sentience_summary", None), use_llm=(mode != "classic"))
+        if mode == "bayes":
+            # Belief-state (probability-density) targeting, no LLM. It "texts"
+            # exactly one line, the first time it moves, then stays silent.
+            cell = bayes.pick_cell(game, bot)
+            taunt = None
+            if cell and not getattr(game, "bayes_greeted", False):
+                game.bayes_greeted = True
+                taunt = "im bayesian! i dont text"
+            move = {"x": cell["x"], "y": cell["y"], "taunt": taunt} if cell else None
+        else:
+            # Sentience mode: fetch + summarize the player's memories once.
+            if mode == "sentience" and getattr(game, "ai_key", None) and not game.ai_summary_fetched:
+                game.ai_summary_fetched = True
+                game.ai_sentience_summary = await sentience.summarize(game.ai_key)
+            # Claude picks move + taunt (classic mode skips the LLM entirely).
+            move = await brain.take_turn(game, bot, getattr(game, "ai_sentience_summary", None), use_llm=(mode != "classic"))
         if not move:
             return
         try:
