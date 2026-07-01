@@ -110,6 +110,9 @@ class Game:
         self.move_log: list[dict] = []  # append-only (player, x, y, result)
         self.ai_state: dict[str, dict] = {p: {"targets": []} for p in players}
         self.last_shot: Optional[dict] = None
+        # In-game chat/taunt transcript ({from, text, bot?}); replayed to a
+        # (re)connecting player so the log survives a refresh while the game lives.
+        self.chat_log: list[dict] = []
 
     def opponent(self, pid: str) -> str:
         return self.players[1] if pid == self.players[0] else self.players[0]
