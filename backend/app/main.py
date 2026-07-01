@@ -83,5 +83,20 @@ async def leaderboard():
     return db.leaderboard()
 
 
+@api.get("/games")
+async def games(limit: int = 50, player: str | None = None):
+    """Completed-game history (newest first), optionally filtered to a player."""
+    return db.recent_games(limit=min(max(limit, 1), 200), player=player)
+
+
+@api.get("/games/{game_id}")
+async def game_detail(game_id: str):
+    """One completed game with its full move log (for replay / analysis)."""
+    record = db.get_game(game_id)
+    if record is None:
+        raise HTTPException(404, "no such game")
+    return record
+
+
 # Combined ASGI app: Socket.IO handles /socket.io/*, FastAPI handles the rest.
 app = socketio.ASGIApp(sio, other_asgi_app=api)
