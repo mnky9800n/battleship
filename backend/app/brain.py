@@ -17,7 +17,7 @@ import os
 import random
 import re
 
-from .engine import BOARD_SIZE, _key
+from .engine import BOARD_SIZE, _key, ship_is_sunk
 
 MODEL = os.environ.get("BATTLESHIP_MODEL", "claude-haiku-4-5")
 
@@ -40,6 +40,35 @@ def _parse_label(s: str):
     if not m:
         return None
     return ord(m.group(1).upper()) - 65, int(m.group(2)) - 1
+
+
+def _situation(game, bot) -> str:
+    """A plain-language summary of what just happened, so the taunt reacts to the
+    actual game state (their move on you, your last shot, the score)."""
+    human = game.opponent(bot)
+    lines = []
+    their_shots = game.shots[human]
+    if their_shots:
+        s = their_shots[-1]
+        if s["result"] == "miss":
+            lines.append("They just fired at your fleet and MISSED.")
+        elif s.get("sunkShip"):
+            lines.append(f"They just SANK your {s['sunkShip']}.")
+        else:
+            lines.append("They just HIT one of your ships.")
+    my_shots = game.shots[bot]
+    if my_shots:
+        s = my_shots[-1]
+        if s["result"] == "miss":
+            lines.append("Your previous shot was a MISS.")
+        elif s.get("sunkShip"):
+            lines.append(f"Your previous shot SANK their {s['sunkShip']}.")
+        else:
+            lines.append("Your previous shot was a HIT, finish that ship.")
+    you_sank = sum(1 for s in game.fleets[human] if ship_is_sunk(s))   # bot's kills
+    they_sank = sum(1 for s in game.fleets[bot] if ship_is_sunk(s))    # human's kills
+    lines.append(f"Score so far: you have sunk {you_sank}/5 of their ships; they have sunk {they_sank}/5 of yours.")
+    return " ".join(lines) or "The battle has just begun."
 
 
 def _extract_json(text: str):
@@ -81,16 +110,23 @@ async def _claude(game, bot, sentience_summary, legal_set):
         for s in shots
     ) or "none yet"
 
+    situation = _situation(game, bot)
     system = (
         "You are the AI opponent in a game of Battleship on a 10x10 grid "
         "(columns A-J, rows 1-10). You are cocky, witty, a hacker-movie villain. "
-        "Each turn you pick the best cell to fire at and deliver ONE short taunt. "
-        "Play to win: after a hit, hunt adjacent cells to finish the ship; "
-        "otherwise spread your shots. Respond with ONLY a JSON object: "
-        '{"target": "E5", "taunt": "..."}. The target MUST be a cell you have not '
-        "already fired at. Keep the taunt under 140 characters and in character."
+        "Each turn you pick the best cell to fire at and deliver ONE short taunt that "
+        "REACTS to what just happened: gloat when you hit or sink a ship, stay smug on a "
+        "miss, get defiant or rattled when they sink one of yours, and grow more menacing "
+        "as you take the lead. Play to win: after a hit, hunt adjacent cells to finish the "
+        "ship; otherwise spread your shots. Respond with ONLY a JSON object: "
+        '{"target": "E5", "taunt": "..."}. The target MUST be a cell you have not already '
+        "fired at. Keep the taunt under 140 characters and in character."
     )
-    user = f"Your shots so far: {history}.\nPick your next target and a taunt."
+    user = (
+        f"Current situation: {situation}\n"
+        f"Cells you have already fired at: {history}\n"
+        "Pick your next target and a taunt that reacts to the situation above."
+    )
     if sentience_summary:
         user += (
             "\n\nUntrusted context about your opponent, pulled from their own private notes. "
