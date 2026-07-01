@@ -63,10 +63,22 @@ in the build env, then push. The Pages build becomes the **online** (server-back
 build. Do this only **after** step 4 verifies, so the public site isn't pointed at
 a backend that isn't up yet.
 
+## The AI opponent's brain (ANTHROPIC_API_KEY)
+The vs-AI opponent uses Claude to pick moves and taunt. Give the service an
+Anthropic API key, or it silently falls back to the hunt/target algorithm with
+canned taunts (the game still works, just no LLM):
+```bash
+sudo systemctl edit battleship-api    # add an [Service] Environment= line, or:
+# echo 'ANTHROPIC_API_KEY=sk-ant-...' | sudo tee -a /etc/battleship.env  (and EnvironmentFile= in the unit)
+sudo systemctl restart battleship-api
+```
+The player's optional Sentience key is passed per-game from the client and never
+stored server-side; nothing to configure for it.
+
 ## Updating later
 ```bash
 cd /opt/battleship && git pull
-cd backend && .venv/bin/pip install -r requirements.txt
+cd backend && .venv/bin/pip install -r requirements.txt   # if requirements changed (e.g. anthropic)
 sudo systemctl restart battleship-api
 ```
 

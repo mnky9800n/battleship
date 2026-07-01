@@ -51,7 +51,7 @@ export default class SocketTransport {
     this.socket = io(this.apiUrl, { auth: { token }, transports: ["websocket", "polling"] });
     // Forward server pushes onto the local bus the UI listens to.
     const fwd = [
-      "state", "error",
+      "state", "error", "chat",
       "challenge_received", "challenge_sent", "challenge_declined",
       "challenge_expired", "challenge_cancelled",
     ];
@@ -70,8 +70,8 @@ export default class SocketTransport {
     if (this.lastLobby) this.emit("lobby_update", this.lastLobby);
   }
 
-  challenge(target) {
-    this.socket?.emit("challenge", { target });
+  challenge(target, sentienceKey) {
+    this.socket?.emit("challenge", { target, sentienceKey });
   }
 
   respondChallenge(accept) {
@@ -100,6 +100,10 @@ export default class SocketTransport {
 
   fire(x, y) {
     this.socket?.emit("fire", { x, y });
+  }
+
+  sendChat(text) {
+    this.socket?.emit("chat", { text });
   }
 
   leave() {

@@ -29,8 +29,8 @@ sockets.register(sio)
 @asynccontextmanager
 async def lifespan(_: FastAPI):
     db.init_db()
-    # The AI opponent is a real user row (so its games score); password is unused.
-    db.ensure_bot_user(auth.hash_password(secrets.token_urlsafe(16)), auth.assign_avatar(db.BOT_USERNAME))
+    # The AI opponents are real user rows (so their games score); passwords unused.
+    db.ensure_bots(auth.hash_password(secrets.token_urlsafe(16)), auth.assign_avatar)
     yield
 
 

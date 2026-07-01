@@ -112,6 +112,9 @@ export default class MockServer {
 
   respondChallenge() {}
   cancelChallenge() {}
+  sendChat(text) {
+    this.emit("chat", { from: this.username || "you", text });
+  }
   leave() {}
   logout() {}
 
