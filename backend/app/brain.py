@@ -140,6 +140,10 @@ async def _claude(game, bot, sentience_summary, legal_set):
         system=system,
         messages=[{"role": "user", "content": user}],
     )
+    print(
+        f"brain: taunt served by {msg.model} (in={msg.usage.input_tokens} out={msg.usage.output_tokens} tok)",
+        flush=True,
+    )
     text = "".join(getattr(b, "text", "") for b in msg.content)
     data = _extract_json(text)
     if not data:
