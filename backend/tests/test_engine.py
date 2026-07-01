@@ -130,6 +130,9 @@ def test_snapshot_perspective():
     assert snap_a["whoseTurn"] == "you"   # a moves first
     assert snap_b["whoseTurn"] == "enemy"
     assert snap_a["status"] == "playing"
+    # Opponent identity is exposed (not secret) so the client can offer a rematch.
+    assert snap_a["opponent"] == "b"
+    assert snap_b["opponent"] == "a"
 
 
 def test_vs_ai_bot_turn():

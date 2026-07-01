@@ -59,6 +59,15 @@ export default function Shell({ client, user, notify, onLogout }) {
     setTab("matchmaking");
   }, [client]);
 
+  // Rematch from the win/loss popup: re-challenge the same opponent. Instant for
+  // an AI; a human gets a fresh challenge to accept. The new game's state arrives
+  // and the effect above jumps back to the game tab.
+  const rematch = useCallback((opponent) => {
+    setSnap(null);
+    setTab("matchmaking");
+    client.challenge(opponent);
+  }, [client]);
+
   const respond = (accept) => { client.respondChallenge(accept); setIncoming(null); };
 
   const inGame = snap && snap.status !== "over";
@@ -92,7 +101,7 @@ export default function Shell({ client, user, notify, onLogout }) {
         {tab === "leaderboard" && <Leaderboard users={users} />}
         {tab === "game" && (
           snap
-            ? <GameScreen client={client} snap={snap} user={user} notify={notify} onExit={toLobby} />
+            ? <GameScreen client={client} snap={snap} user={user} notify={notify} onExit={toLobby} onRematch={rematch} />
             : <div style={empty}>no active game — challenge someone from matchmaking</div>
         )}
       </main>
