@@ -114,7 +114,7 @@ export default class MockServer {
   respondChallenge() {}
   cancelChallenge() {}
   sendChat(text) {
-    const entry = { from: this.username || "you", text };
+    const entry = { from: this.username || "you", text, id: this.chatLog.length };
     this.chatLog.push(entry);
     this.emit("chat", entry);
   }

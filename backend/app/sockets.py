@@ -80,6 +80,10 @@ def register(sio) -> None:
         await sio.emit("chat_history", {"messages": game.chat_log}, to=sid)
 
     async def post_chat(game: Game, entry: dict) -> None:
+        # Stamp a per-game sequence id so the client can dedupe a message that
+        # gets delivered more than once (a transient double socket / reconnect
+        # can otherwise show the first taunt twice).
+        entry = {**entry, "id": len(game.chat_log)}
         game.chat_log.append(entry)
         await sio.emit("chat", entry, room=game.id)
 

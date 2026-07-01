@@ -99,9 +99,9 @@ def test_chat_appends_to_log_and_broadcasts(sio):
         return game
 
     game = asyncio.run(scenario())
-    assert game.chat_log == [{"from": "alice", "text": "prepare to lose"}]
+    assert game.chat_log == [{"from": "alice", "text": "prepare to lose", "id": 0}]
     chats = [e for e in sio.emits if e["event"] == "chat"]
-    assert chats and chats[0]["data"] == {"from": "alice", "text": "prepare to lose"}
+    assert chats and chats[0]["data"] == {"from": "alice", "text": "prepare to lose", "id": 0}
     assert chats[0]["room"] == game.id  # relayed to the whole game room
 
 
@@ -124,8 +124,8 @@ def test_reconnect_replays_state_and_chat(sio):
     hist = sio.to("sa2", "chat_history")
     assert hist, "expected chat_history on reconnect"
     assert hist[0]["data"]["messages"] == [
-        {"from": "alice", "text": "hello"},
-        {"from": "bob", "text": "hi back"},
+        {"from": "alice", "text": "hello", "id": 0},
+        {"from": "bob", "text": "hi back", "id": 1},
     ]
 
 
@@ -157,4 +157,4 @@ def test_resume_replays_chat(sio):
 
     asyncio.run(scenario())
     hist = sio.to("sa", "chat_history")
-    assert hist and hist[0]["data"]["messages"] == [{"from": "alice", "text": "gg"}]
+    assert hist and hist[0]["data"]["messages"] == [{"from": "alice", "text": "gg", "id": 0}]
