@@ -47,10 +47,10 @@ export default function Chat({ messages, onSend, me }) {
       <div ref={scrollRef} style={list}>
         {messages.length === 0 && <div style={{ color: T.greenDim, fontSize: 12 }}>no transmissions yet…</div>}
         {messages.map((m, i) => {
-          const ai = m.from === "playerAI";
+          const ai = !!m.bot;
           const mine = m.from === me;
           const color = ai ? T.amber : mine ? T.green : T.greenSoft;
-          const name = ai ? "🤖 playerAI" : mine ? "you" : m.from;
+          const name = ai ? `🤖 ${m.from}` : mine ? "you" : m.from;
           return (
             <div key={i} style={{ marginBottom: 6, fontSize: 13 }}>
               <span style={{ color, fontWeight: 700 }}>{name}:</span>{" "}

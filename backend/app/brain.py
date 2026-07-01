@@ -81,14 +81,15 @@ def _extract_json(text: str):
         return None
 
 
-async def take_turn(game, bot, sentience_summary: str | None = None) -> dict | None:
-    """Return {x, y, taunt} for the bot's move. Always a legal move."""
+async def take_turn(game, bot, sentience_summary: str | None = None, use_llm: bool = True) -> dict | None:
+    """Return {x, y, taunt} for the bot's move. Always a legal move. When
+    use_llm is False (the classic bot), skip Claude and use hunt/target + canned."""
     fired = game.fired[bot]
     legal = {(x, y) for x in range(BOARD_SIZE) for y in range(BOARD_SIZE) if _key(x, y) not in fired}
     if not legal:
         return None
 
-    if os.environ.get("ANTHROPIC_API_KEY"):
+    if use_llm and os.environ.get("ANTHROPIC_API_KEY"):
         try:
             result = await _claude(game, bot, sentience_summary, legal)
             if result:

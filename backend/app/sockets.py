@@ -17,7 +17,6 @@ import uuid
 from . import auth, brain, db, sentience
 from .engine import Game, GameError, random_fleet
 
-BOT = db.BOT_USERNAME
 GRACE_SECONDS = 60
 CHALLENGE_SECONDS = 60
 BOT_DELAY = 0.45
@@ -38,7 +37,7 @@ def game_of(username: str) -> Game | None:
 
 
 def _presence(username: str) -> str:
-    if username == BOT:
+    if db.is_bot(username):
         return "ai"
     return "online" if user_sids.get(username) else "offline"
 
@@ -49,10 +48,12 @@ def register(sio) -> None:
     def user_list() -> list[dict]:
         rows = []
         for u in db.all_users():
+            bot = db.is_bot(u["username"])
             rows.append({
                 **u,
                 "presence": _presence(u["username"]),
-                "inGame": game_of(u["username"]) is not None and u["username"] != BOT,
+                "inGame": (not bot) and game_of(u["username"]) is not None,
+                "aiMode": db.BOTS.get(u["username"]),  # None for humans
             })
         # online first, then AI, then offline; alphabetical within.
         order = {"online": 0, "ai": 1, "offline": 2}
@@ -64,7 +65,7 @@ def register(sio) -> None:
 
     async def emit_state(game: Game) -> None:
         for p in game.players:
-            if p == BOT:
+            if db.is_bot(p):
                 continue
             snap = game.snapshot_for(p)
             for s in list(user_sids.get(p, ())):
@@ -96,23 +97,24 @@ def register(sio) -> None:
 
     async def run_bot(game: Game) -> None:
         await asyncio.sleep(BOT_DELAY)
-        if game.status != "playing" or game.turn != BOT:
+        bot = getattr(game, "bot", None)
+        if not bot or game.status != "playing" or game.turn != bot:
             return
-        # First bot turn: if the player opted in with a Sentience key, fetch +
-        # summarize their memories once to flavor the taunts.
-        if getattr(game, "ai_key", None) and not getattr(game, "ai_summary_fetched", True):
+        mode = getattr(game, "ai_mode", "haiku")
+        # Sentience mode: fetch + summarize the player's memories once.
+        if mode == "sentience" and getattr(game, "ai_key", None) and not game.ai_summary_fetched:
             game.ai_summary_fetched = True
             game.ai_sentience_summary = await sentience.summarize(game.ai_key)
-        # Claude picks the move + taunt (hunt/target fallback inside the brain).
-        move = await brain.take_turn(game, BOT, getattr(game, "ai_sentience_summary", None))
+        # Claude picks move + taunt (classic mode skips the LLM entirely).
+        move = await brain.take_turn(game, bot, getattr(game, "ai_sentience_summary", None), use_llm=(mode != "classic"))
         if not move:
             return
         try:
-            game.fire(BOT, move["x"], move["y"])
+            game.fire(bot, move["x"], move["y"])
         except GameError:
             return
         if move.get("taunt"):
-            await sio.emit("chat", {"from": BOT, "text": move["taunt"]}, room=game.id)
+            await sio.emit("chat", {"from": bot, "text": move["taunt"], "bot": True}, room=game.id)
         await emit_state(game)
         if game.status == "over":
             await finalize(game)
@@ -132,19 +134,21 @@ def register(sio) -> None:
 
     # --- game creation --------------------------------------------------
 
-    async def create_match(a: str, b: str, vs_ai: bool = False, sentience_key: str | None = None) -> None:
+    async def create_match(a: str, b: str, vs_ai: bool = False, mode: str = "haiku", sentience_key: str | None = None) -> None:
         gid = uuid.uuid4().hex[:12]
         game = Game(gid, [a, b], vs_ai=vs_ai)
         if vs_ai:
-            game.fleets[BOT] = random_fleet()
-            game.set_ready(BOT)
-            # Optional, per-game, in-memory only. Drives memory-grounded taunts.
-            game.ai_key = sentience_key
+            game.bot = b
+            game.ai_mode = mode
+            game.fleets[b] = random_fleet()
+            game.set_ready(b)
+            # Optional, per-game, in-memory only. Only sentience mode uses a key.
+            game.ai_key = sentience_key if mode == "sentience" else None
             game.ai_sentience_summary = None
             game.ai_summary_fetched = False
         games[gid] = game
         for p in (a, b):
-            if p == BOT:
+            if db.is_bot(p):
                 continue
             user_game[p] = gid
             for s in list(user_sids.get(p, ())):
@@ -211,8 +215,10 @@ def register(sio) -> None:
         if not target or target == challenger:
             return await emit_error(sid, "invalid opponent")
 
-        if target == BOT:
-            return await create_match(challenger, BOT, vs_ai=True, sentience_key=(data or {}).get("sentienceKey"))
+        if db.is_bot(target):
+            mode = db.BOTS[target]
+            key = (data or {}).get("sentienceKey") if mode == "sentience" else None
+            return await create_match(challenger, target, vs_ai=True, mode=mode, sentience_key=key)
 
         if not user_sids.get(target):
             return await emit_error(sid, "that player is offline")
@@ -301,7 +307,7 @@ def register(sio) -> None:
             return
         if game.status == "over":
             await finalize(game)
-        elif game.vs_ai and game.turn == BOT:
+        elif game.vs_ai and game.turn == getattr(game, "bot", None):
             asyncio.create_task(run_bot(game))
 
     @sio.event
