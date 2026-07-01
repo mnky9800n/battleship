@@ -68,6 +68,7 @@ export default class MockServer {
     this.listeners = new Map();
     this.game = null;
     this.aiTimer = null;
+    this.chatLog = [];
   }
 
   on(event, cb) {
@@ -113,7 +114,19 @@ export default class MockServer {
   respondChallenge() {}
   cancelChallenge() {}
   sendChat(text) {
-    this.emit("chat", { from: this.username || "you", text });
+    const entry = { from: this.username || "you", text };
+    this.chatLog.push(entry);
+    this.emit("chat", entry);
+  }
+  refreshChat() {
+    this.emit("chat_history", { messages: this.chatLog });
+  }
+  refreshState() {
+    if (this.game) this.emit("state", this.snapshot());
+  }
+  // Offline practice has no persistence; a refresh restarts the session.
+  restoreSession() {
+    return Promise.resolve(null);
   }
   leave() {}
   logout() {}
@@ -122,6 +135,8 @@ export default class MockServer {
   // the human places their fleet via placeShip, then ready() begins play.
   startVsAI() {
     if (this.aiTimer) clearTimeout(this.aiTimer);
+    this.chatLog = [];
+    this.emit("chat_history", { messages: [] });
     this.game = {
       id: `g-${Date.now()}`,
       status: "setup",

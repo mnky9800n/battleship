@@ -18,20 +18,26 @@ export default function GameScreen({ client, snap, user, notify, onExit }) {
   const [orientation, setOrientation] = useState("h");
   const [messages, setMessages] = useState([]);
 
-  // Chat: append every chat line (yours + the opponent's / AI taunts).
+  // Chat: the server is the source of truth. `chat_history` replaces the whole
+  // transcript (on mount/refresh/new game); `chat` appends a new line. Pulling on
+  // mount rebuilds the panel after a refresh while the game is still live.
   useEffect(() => {
-    const off = client.on("chat", (m) => setMessages((prev) => [...prev, m]));
-    return () => off && off();
+    const offs = [
+      client.on("chat", (m) => setMessages((prev) => [...prev, m])),
+      client.on("chat_history", (d) => setMessages(d.messages || [])),
+    ];
+    client.refreshChat();
+    return () => offs.forEach((off) => off && off());
   }, [client]);
 
-  // Reset placement + chat when a fresh game starts.
+  // Reset placement controls when a fresh game starts (chat resets via the
+  // server's chat_history push, so it isn't cleared here).
   const lastGame = useRef(null);
   useEffect(() => {
     if (snap && snap.gameId !== lastGame.current) {
       lastGame.current = snap.gameId;
       setSelectedKind(FLEET[0]);
       setOrientation("h");
-      setMessages([]);
     }
   }, [snap]);
 
