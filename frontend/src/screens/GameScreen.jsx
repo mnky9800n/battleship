@@ -13,7 +13,7 @@ const COL = (x) => String.fromCharCode(65 + x);
 const coord = (s) => (s ? `${COL(s.x)}${s.y + 1}` : "--");
 const cellKey = (c) => `${c.x},${c.y}`;
 
-export default function GameScreen({ client, snap, user, notify, onExit }) {
+export default function GameScreen({ client, snap, user, notify, onExit, onRematch }) {
   const [selectedKind, setSelectedKind] = useState(FLEET[0]);
   const [orientation, setOrientation] = useState("h");
   const [messages, setMessages] = useState([]);
@@ -165,7 +165,10 @@ export default function GameScreen({ client, snap, user, notify, onExit }) {
             <div style={{ fontSize: 16, color: T.greenDim, margin: "10px 0 24px" }}>
               {won ? "enemy fleet destroyed" : "your fleet was lost"}
             </div>
-            <button style={{ ...solidBtnStyle, fontSize: 16, padding: "12px 20px" }} onClick={onExit}>▶ RETURN TO LOBBY</button>
+            <div style={{ display: "flex", gap: 12, justifyContent: "center" }}>
+              <button style={{ ...solidBtnStyle, fontSize: 16, padding: "12px 20px" }} onClick={() => onRematch?.(snap?.opponent)}>⟳ REMATCH</button>
+              <button style={{ ...btnStyle, fontSize: 16, padding: "12px 20px" }} onClick={onExit}>▶ RETURN TO LOBBY</button>
+            </div>
           </div>
         </div>
       )}

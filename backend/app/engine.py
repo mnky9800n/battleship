@@ -291,6 +291,7 @@ class Game:
         return {
             "gameId": self.id,
             "status": self.status,
+            "opponent": self.opponent(viewer),  # identity is not secret (only ship positions are); used for rematch
             "whoseTurn": whose,
             "winner": winner,
             "youReady": viewer in self.ready,

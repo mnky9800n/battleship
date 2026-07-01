@@ -366,6 +366,7 @@ export default class MockServer {
     return {
       gameId: g.id,
       status: g.status,
+      opponent: "playerAI",
       whoseTurn: g.turn,
       winner: g.winner,
       youReady: g.status !== "setup",
