@@ -9,7 +9,13 @@ import { T, FONT, titleStyle, btnStyle, solidBtnStyle } from "../theme.js";
 // lobby/challenge flow and drops into the game when a match starts.
 
 export default function Shell({ client, user, notify, onLogout }) {
-  const [tab, setTab] = useState("matchmaking");
+  // Restore the lobby tab you were on before a refresh. "game" is never restored
+  // directly: an active game re-promotes to the game tab via the state effect
+  // below, and an ended game correctly lands back in the lobby.
+  const [tab, setTab] = useState(() => {
+    const saved = typeof localStorage !== "undefined" && localStorage.getItem("bs.tab");
+    return saved === "leaderboard" ? "leaderboard" : "matchmaking";
+  });
   const [snap, setSnap] = useState(null);
   const [users, setUsers] = useState([]);
   const [incoming, setIncoming] = useState(null); // {from}
@@ -28,8 +34,14 @@ export default function Shell({ client, user, notify, onLogout }) {
       client.on("challenge_cancelled", (d) => { notify(`${d.by} cancelled`); setIncoming(null); }),
     ];
     client.refreshLobby();
+    client.refreshState(); // pull an in-progress game after a reconnect
     return () => offs.forEach((off) => off && off());
   }, [client, notify]);
+
+  // Remember which lobby tab you're on so a refresh returns you there.
+  useEffect(() => {
+    if (tab === "matchmaking" || tab === "leaderboard") localStorage.setItem("bs.tab", tab);
+  }, [tab]);
 
   // When a game starts, jump to the game tab and clear any pending challenge.
   useEffect(() => {

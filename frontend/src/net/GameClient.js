@@ -34,6 +34,19 @@ export default class GameClient {
     this.transport.refreshLobby?.();
   }
 
+  refreshState() {
+    this.transport.refreshState?.();
+  }
+
+  refreshChat() {
+    this.transport.refreshChat?.();
+  }
+
+  // Reconnect from a stored token on load; resolves the user or null.
+  restoreSession() {
+    return this.transport.restoreSession ? this.transport.restoreSession() : Promise.resolve(null);
+  }
+
   challenge(target, sentienceKey) {
     this.transport.challenge(target, sentienceKey);
   }

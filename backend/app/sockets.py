@@ -74,6 +74,15 @@ def register(sio) -> None:
     async def emit_error(sid: str, message: str) -> None:
         await sio.emit("error", {"message": message}, to=sid)
 
+    async def emit_chat_history(game: Game, sid: str) -> None:
+        # Full transcript for a (re)connecting player: rebuilds the chat panel
+        # after a refresh, and (empty on a fresh game) resets any stale log.
+        await sio.emit("chat_history", {"messages": game.chat_log}, to=sid)
+
+    async def post_chat(game: Game, entry: dict) -> None:
+        game.chat_log.append(entry)
+        await sio.emit("chat", entry, room=game.id)
+
     async def finalize(game: Game) -> None:
         db.save_completed_game(game)
         if game.winner:
@@ -114,7 +123,7 @@ def register(sio) -> None:
         except GameError:
             return
         if move.get("taunt"):
-            await sio.emit("chat", {"from": bot, "text": move["taunt"], "bot": True}, room=game.id)
+            await post_chat(game, {"from": bot, "text": move["taunt"], "bot": True})
         await emit_state(game)
         if game.status == "over":
             await finalize(game)
@@ -154,6 +163,12 @@ def register(sio) -> None:
             for s in list(user_sids.get(p, ())):
                 await sio.enter_room(s, gid)
         await emit_state(game)
+        # Fresh game: reset each player's chat panel (clears any stale transcript).
+        for p in game.players:
+            if db.is_bot(p):
+                continue
+            for s in list(user_sids.get(p, ())):
+                await emit_chat_history(game, s)
         await broadcast_lobby()
 
     def _clear_challenge(target: str) -> None:
@@ -183,6 +198,7 @@ def register(sio) -> None:
         if game:
             await sio.enter_room(sid, game.id)
             await sio.emit("state", game.snapshot_for(username), to=sid)
+            await emit_chat_history(game, sid)
         await sio.emit("lobby_update", {"users": user_list()}, to=sid)
         await broadcast_lobby()
         return True
@@ -317,6 +333,7 @@ def register(sio) -> None:
         if game:
             await sio.enter_room(sid, game.id)
             await sio.emit("state", game.snapshot_for(username), to=sid)
+            await emit_chat_history(game, sid)
 
     @sio.event
     async def chat(sid, data):
@@ -328,7 +345,7 @@ def register(sio) -> None:
             return
         text = ((data or {}).get("text") or "").strip()[:280]
         if text:
-            await sio.emit("chat", {"from": username, "text": text}, room=game.id)
+            await post_chat(game, {"from": username, "text": text})
 
     @sio.event
     async def leave(sid, data=None):
